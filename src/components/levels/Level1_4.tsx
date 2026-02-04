@@ -8,10 +8,8 @@ import {
   ChevronRight,
   CircleDot,
   Lightbulb,
-  MousePointerClick,
+  Clock,
   Power,
-  PowerOff,
-  ToggleLeft,
   Play,
   RotateCcw,
   Sparkles,
@@ -55,26 +53,6 @@ const availableComponents: DraggableComponent[] = [
     data: { label: "Light", pin: "GPIO5", isOn: false },
   },
   {
-    id: "on_press",
-    type: "trigger",
-    label: "When Pressed",
-    icon: MousePointerClick,
-    color: "text-cyan-400",
-    bgColor: "bg-cyan-500/20",
-    category: "Trigger",
-    data: { label: "When Pressed", triggerType: "on_press" },
-  },
-  {
-    id: "on_release",
-    type: "trigger",
-    label: "When Released",
-    icon: MousePointerClick,
-    color: "text-teal-400",
-    bgColor: "bg-teal-500/20",
-    category: "Trigger",
-    data: { label: "When Released", triggerType: "on_release" },
-  },
-  {
     id: "turn_on",
     type: "action",
     label: "Turn On",
@@ -88,39 +66,45 @@ const availableComponents: DraggableComponent[] = [
     id: "turn_off",
     type: "action",
     label: "Turn Off",
-    icon: PowerOff,
+    icon: Power,
     color: "text-red-400",
     bgColor: "bg-red-500/20",
     category: "Action",
     data: { label: "Turn Off", actionType: "turn_off" },
   },
   {
-    id: "toggle",
-    type: "action",
-    label: "Toggle",
-    icon: ToggleLeft,
-    color: "text-purple-400",
-    bgColor: "bg-purple-500/20",
-    category: "Action",
-    data: { label: "Toggle", actionType: "toggle" },
+    id: "delay_5s",
+    type: "delay",
+    label: "Wait 5s",
+    icon: Clock,
+    color: "text-orange-400",
+    bgColor: "bg-orange-500/20",
+    category: "Timing",
+    data: { label: "Wait", duration: "5s" },
+  },
+  {
+    id: "delay_1s",
+    type: "delay",
+    label: "Wait 1s",
+    icon: Clock,
+    color: "text-orange-400",
+    bgColor: "bg-orange-500/20",
+    category: "Timing",
+    data: { label: "Wait", duration: "1s" },
   },
 ]
 
-const initialNodes: Node[] = []
-const initialEdges: Edge[] = []
-
-export function Level1_3() {
-  const [nodes, setNodes] = useState<Node[]>(initialNodes)
-  const [edges, setEdges] = useState<Edge[]>(initialEdges)
+export function Level1_4() {
+  const [nodes, setNodes] = useState<Node[]>([])
+  const [edges, setEdges] = useState<Edge[]>([])
   const [isSimulating, setIsSimulating] = useState(false)
   const [simulationStep, setSimulationStep] = useState(0)
   const [challengeComplete, setChallengeComplete] = useState(false)
-  const [showInstructions, setShowInstructions] = useState(true)
+  const [showConcept, setShowConcept] = useState(true)
 
   const { completeLevel, completedLevels } = useProgressStore()
-  const isCompleted = completedLevels.includes("1.3")
+  const isCompleted = completedLevels.includes("1.4")
 
-  // Add node to canvas
   const handleAddNode = useCallback((component: DraggableComponent) => {
     const newNode: Node = {
       id: `${component.id}-${Date.now()}`,
@@ -134,57 +118,38 @@ export function Level1_3() {
     setNodes((prev) => [...prev, newNode])
   }, [])
 
-  // Check if the challenge is complete
   const checkChallenge = useCallback(() => {
-    // Need: button -> on_press -> turn_on -> light
-    // AND: button -> on_release -> turn_off -> light
+    // Need: button -> turn_on -> light AND turn_on -> delay -> turn_off -> light
     const hasButton = nodes.some((n) => n.type === "button")
     const hasLight = nodes.some((n) => n.type === "light")
-    const hasOnPress = nodes.some(
-      (n) => n.type === "trigger" && n.data.triggerType === "on_press"
-    )
-    const hasOnRelease = nodes.some(
-      (n) => n.type === "trigger" && n.data.triggerType === "on_release"
-    )
-    const hasTurnOn = nodes.some(
-      (n) => n.type === "action" && n.data.actionType === "turn_on"
-    )
-    const hasTurnOff = nodes.some(
-      (n) => n.type === "action" && n.data.actionType === "turn_off"
-    )
+    const hasTurnOn = nodes.some((n) => n.type === "action" && n.data.actionType === "turn_on")
+    const hasTurnOff = nodes.some((n) => n.type === "action" && n.data.actionType === "turn_off")
+    const hasDelay = nodes.some((n) => n.type === "delay")
 
-    // Check connections exist
-    const hasCorrectFlow =
-      hasButton &&
-      hasLight &&
-      hasOnPress &&
-      hasOnRelease &&
-      hasTurnOn &&
-      hasTurnOff &&
-      edges.length >= 6
+    const hasCorrectFlow = hasButton && hasLight && hasTurnOn && hasTurnOff && hasDelay && edges.length >= 5
 
     if (hasCorrectFlow) {
       setChallengeComplete(true)
-      completeLevel("1.3")
+      completeLevel("1.4")
     }
 
     return hasCorrectFlow
   }, [nodes, edges, completeLevel])
 
-  // Simulate the flow
   const runSimulation = useCallback(() => {
     setIsSimulating(true)
     setSimulationStep(0)
 
     const buttonNode = nodes.find((n) => n.type === "button")
     const lightNode = nodes.find((n) => n.type === "light")
+    const delayNode = nodes.find((n) => n.type === "delay")
 
     if (!buttonNode || !lightNode) {
       setIsSimulating(false)
       return
     }
 
-    // Step 1: Activate button
+    // Step 1: Button pressed
     setTimeout(() => {
       setNodes((prev) =>
         prev.map((n) =>
@@ -202,37 +167,61 @@ export function Level1_3() {
         )
       )
       setSimulationStep(2)
-    }, 1200)
+    }, 1000)
 
-    // Step 3: Deactivate button
-    setTimeout(() => {
-      setNodes((prev) =>
-        prev.map((n) =>
-          n.id === buttonNode.id ? { ...n, data: { ...n.data, isActive: false } } : n
+    // Step 3: Delay starts (if present)
+    if (delayNode) {
+      setTimeout(() => {
+        setNodes((prev) =>
+          prev.map((n) =>
+            n.id === delayNode.id ? { ...n, data: { ...n.data, isActive: true } } : n
+          )
         )
-      )
-      setSimulationStep(3)
-    }, 2000)
+        setSimulationStep(3)
+      }, 1500)
 
-    // Step 4: Light turns off
-    setTimeout(() => {
-      setNodes((prev) =>
-        prev.map((n) =>
-          n.id === lightNode.id ? { ...n, data: { ...n.data, isOn: false } } : n
+      // Step 4: Delay ends
+      setTimeout(() => {
+        setNodes((prev) =>
+          prev.map((n) =>
+            n.id === delayNode.id ? { ...n, data: { ...n.data, isActive: false } } : n
+          )
         )
-      )
-      setSimulationStep(4)
-    }, 2700)
+        setSimulationStep(4)
+      }, 4000)
 
-    // End simulation
-    setTimeout(() => {
-      setIsSimulating(false)
-      setSimulationStep(0)
-      checkChallenge()
-    }, 3500)
+      // Step 5: Light turns off
+      setTimeout(() => {
+        setNodes((prev) =>
+          prev.map((n) => {
+            if (n.id === lightNode.id) return { ...n, data: { ...n.data, isOn: false } }
+            if (n.id === buttonNode.id) return { ...n, data: { ...n.data, isActive: false } }
+            return n
+          })
+        )
+        setSimulationStep(5)
+      }, 4500)
+
+      // End simulation
+      setTimeout(() => {
+        setIsSimulating(false)
+        setSimulationStep(0)
+        checkChallenge()
+      }, 5500)
+    } else {
+      // No delay - end early
+      setTimeout(() => {
+        setNodes((prev) =>
+          prev.map((n) =>
+            n.id === buttonNode.id ? { ...n, data: { ...n.data, isActive: false } } : n
+          )
+        )
+        setIsSimulating(false)
+        setSimulationStep(0)
+      }, 2500)
+    }
   }, [nodes, checkChallenge])
 
-  // Reset canvas
   const resetCanvas = useCallback(() => {
     setNodes([])
     setEdges([])
@@ -248,16 +237,16 @@ export function Level1_3() {
         <div>
           <div className="mb-2 flex items-center gap-2">
             <Badge className="bg-amber-500/20 text-amber-400">Phase 1</Badge>
-            <Badge variant="outline">Level 1.3</Badge>
+            <Badge variant="outline">Level 1.4</Badge>
             {isCompleted && (
               <Badge className="bg-green-500/20 text-green-400">
                 <CheckCircle2 className="mr-1 h-3 w-3" /> Completed
               </Badge>
             )}
           </div>
-          <h1 className="text-2xl font-bold">Your First Flow</h1>
+          <h1 className="text-2xl font-bold">Adding Timing</h1>
           <p className="text-muted-foreground">
-            Build visual logic by connecting nodes together.
+            Learn how delays and durations work in automations.
           </p>
         </div>
         <div className="flex gap-2">
@@ -291,38 +280,47 @@ export function Level1_3() {
 
         {/* Right Panel */}
         <div className="flex w-80 flex-col gap-4 overflow-auto">
-          {/* Instructions */}
+          {/* Concept Explanation */}
           <AnimatePresence>
-            {showInstructions && (
+            {showConcept && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
               >
-                <Card className="border-blue-500/30 bg-blue-500/5">
+                <Card className="border-orange-500/30 bg-orange-500/5">
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm text-blue-400">
-                        How it works
+                      <CardTitle className="flex items-center gap-2 text-sm text-orange-400">
+                        <Clock className="h-4 w-4" />
+                        Timing Concept
                       </CardTitle>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-6 w-6 p-0 text-muted-foreground"
-                        onClick={() => setShowInstructions(false)}
+                        onClick={() => setShowConcept(false)}
                       >
                         ×
                       </Button>
                     </div>
                   </CardHeader>
                   <CardContent className="text-sm text-muted-foreground">
-                    <ol className="list-inside list-decimal space-y-1">
-                      <li>Click components below to add them to the canvas</li>
-                      <li>Drag nodes to position them</li>
-                      <li>Connect nodes by dragging from one handle to another</li>
-                      <li>Click a line to select it, then press <kbd className="rounded bg-muted px-1 py-0.5 text-xs">Delete</kbd> to remove</li>
-                      <li>Click "Simulate" to see your flow in action</li>
-                    </ol>
+                    <p className="mb-3">
+                      Sometimes you want actions to happen after a delay, or for a specific duration.
+                    </p>
+                    <div className="rounded-lg bg-background/50 p-3">
+                      <p className="mb-2 font-medium text-foreground">Example: Timed Light</p>
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="rounded bg-blue-500/20 px-2 py-1 text-blue-400">Press</span>
+                        <span>→</span>
+                        <span className="rounded bg-green-500/20 px-2 py-1 text-green-400">On</span>
+                        <span>→</span>
+                        <span className="rounded bg-orange-500/20 px-2 py-1 text-orange-400">5s</span>
+                        <span>→</span>
+                        <span className="rounded bg-red-500/20 px-2 py-1 text-red-400">Off</span>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -330,7 +328,7 @@ export function Level1_3() {
           </AnimatePresence>
 
           {/* Components Panel */}
-          <Card className="flex-1 border-border/50 bg-card/50">
+          <Card className="border-border/50 bg-card/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Components</CardTitle>
               <CardDescription className="text-xs">
@@ -338,7 +336,7 @@ export function Level1_3() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {["Input", "Trigger", "Action", "Output"].map((category) => (
+              {["Input", "Action", "Timing", "Output"].map((category) => (
                 <div key={category}>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {category}
@@ -375,7 +373,7 @@ export function Level1_3() {
           </Card>
 
           {/* Challenge */}
-          <Card className="border-border/50 bg-card/50">
+          <Card className="border-border/50 bg-card/50 shrink-0">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-sm">
@@ -389,8 +387,7 @@ export function Level1_3() {
                 )}
               </div>
               <CardDescription className="text-xs">
-                Create a flow where pressing the button turns the light on, and
-                releasing it turns the light off.
+                Create a timed light: button press turns on, waits 5 seconds, then turns off automatically.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -413,82 +410,62 @@ export function Level1_3() {
                 <div
                   className={cn(
                     "flex items-center gap-2 rounded-lg border p-2",
-                    nodes.some((n) => n.type === "light")
+                    nodes.some((n) => n.type === "action" && n.data.actionType === "turn_on")
                       ? "border-green-500/50 bg-green-500/10 text-green-400"
                       : "border-border/50 text-muted-foreground"
                   )}
                 >
-                  {nodes.some((n) => n.type === "light") ? (
+                  {nodes.some((n) => n.type === "action" && n.data.actionType === "turn_on") ? (
                     <CheckCircle2 className="h-3 w-3" />
                   ) : (
                     <CircleDot className="h-3 w-3" />
                   )}
-                  Add a Light
+                  Add Turn On action
                 </div>
                 <div
                   className={cn(
                     "flex items-center gap-2 rounded-lg border p-2",
-                    nodes.some(
-                      (n) => n.type === "trigger" && n.data.triggerType === "on_press"
-                    ) &&
-                      nodes.some(
-                        (n) => n.type === "action" && n.data.actionType === "turn_on"
-                      )
+                    nodes.some((n) => n.type === "delay")
                       ? "border-green-500/50 bg-green-500/10 text-green-400"
                       : "border-border/50 text-muted-foreground"
                   )}
                 >
-                  {nodes.some(
-                    (n) => n.type === "trigger" && n.data.triggerType === "on_press"
-                  ) &&
-                  nodes.some(
-                    (n) => n.type === "action" && n.data.actionType === "turn_on"
-                  ) ? (
+                  {nodes.some((n) => n.type === "delay") ? (
                     <CheckCircle2 className="h-3 w-3" />
                   ) : (
                     <CircleDot className="h-3 w-3" />
                   )}
-                  When Pressed → Turn On
+                  Add a Wait block
                 </div>
                 <div
                   className={cn(
                     "flex items-center gap-2 rounded-lg border p-2",
-                    nodes.some(
-                      (n) => n.type === "trigger" && n.data.triggerType === "on_release"
-                    ) &&
-                      nodes.some(
-                        (n) => n.type === "action" && n.data.actionType === "turn_off"
-                      )
+                    nodes.some((n) => n.type === "action" && n.data.actionType === "turn_off")
                       ? "border-green-500/50 bg-green-500/10 text-green-400"
                       : "border-border/50 text-muted-foreground"
                   )}
                 >
-                  {nodes.some(
-                    (n) => n.type === "trigger" && n.data.triggerType === "on_release"
-                  ) &&
-                  nodes.some(
-                    (n) => n.type === "action" && n.data.actionType === "turn_off"
-                  ) ? (
+                  {nodes.some((n) => n.type === "action" && n.data.actionType === "turn_off") ? (
                     <CheckCircle2 className="h-3 w-3" />
                   ) : (
                     <CircleDot className="h-3 w-3" />
                   )}
-                  When Released → Turn Off
+                  Add Turn Off action
                 </div>
                 <div
                   className={cn(
                     "flex items-center gap-2 rounded-lg border p-2",
-                    edges.length >= 6
+                    edges.length >= 5
                       ? "border-green-500/50 bg-green-500/10 text-green-400"
                       : "border-border/50 text-muted-foreground"
                   )}
                 >
-                  {edges.length >= 6 ? (
+                  {edges.length >= 5 ? (
                     <CheckCircle2 className="h-3 w-3" />
                   ) : (
                     <CircleDot className="h-3 w-3" />
                   )}
-                  Connect all nodes ({edges.length}/6)
+                  Connect all nodes ({edges.length}/5)
                 </div>
               </div>
 
@@ -498,8 +475,8 @@ export function Level1_3() {
                   animate={{ opacity: 1, y: 0 }}
                 >
                   <Button asChild className="w-full" size="sm">
-                    <Link to="/level/1.4">
-                      Continue to Level 1.4
+                    <Link to="/level/2.1">
+                      Continue to Phase 2
                       <ChevronRight className="ml-2 h-4 w-4" />
                     </Link>
                   </Button>
@@ -516,39 +493,26 @@ export function Level1_3() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
               >
-                <Card className="border-purple-500/30 bg-purple-500/5">
+                <Card className="border-orange-500/30 bg-orange-500/5">
                   <CardContent className="py-4">
-                    <p className="mb-2 text-sm font-medium text-purple-400">
-                      Simulating...
+                    <p className="mb-2 text-sm font-medium text-orange-400">
+                      Simulating timed sequence...
                     </p>
                     <div className="space-y-1 text-xs text-muted-foreground">
-                      <p
-                        className={cn(
-                          simulationStep >= 1 && "text-blue-400 font-medium"
-                        )}
-                      >
+                      <p className={cn(simulationStep >= 1 && "text-blue-400 font-medium")}>
                         1. Button pressed
                       </p>
-                      <p
-                        className={cn(
-                          simulationStep >= 2 && "text-amber-400 font-medium"
-                        )}
-                      >
+                      <p className={cn(simulationStep >= 2 && "text-green-400 font-medium")}>
                         2. Light turns on
                       </p>
-                      <p
-                        className={cn(
-                          simulationStep >= 3 && "text-blue-400 font-medium"
-                        )}
-                      >
-                        3. Button released
+                      <p className={cn(simulationStep >= 3 && "text-orange-400 font-medium")}>
+                        3. Waiting 5 seconds...
                       </p>
-                      <p
-                        className={cn(
-                          simulationStep >= 4 && "text-gray-400 font-medium"
-                        )}
-                      >
-                        4. Light turns off
+                      <p className={cn(simulationStep >= 4 && "text-orange-400 font-medium")}>
+                        4. Wait complete
+                      </p>
+                      <p className={cn(simulationStep >= 5 && "text-red-400 font-medium")}>
+                        5. Light turns off
                       </p>
                     </div>
                   </CardContent>

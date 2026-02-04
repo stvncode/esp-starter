@@ -21,6 +21,7 @@ import { ButtonNode } from "./nodes/ButtonNode"
 import { LightNode } from "./nodes/LightNode"
 import { ActionNode } from "./nodes/ActionNode"
 import { TriggerNode } from "./nodes/TriggerNode"
+import { DelayNode } from "./nodes/DelayNode"
 
 interface FlowCanvasProps {
   nodes: Node[]
@@ -52,6 +53,7 @@ export function FlowCanvas({
       light: LightNode,
       action: ActionNode,
       trigger: TriggerNode,
+      delay: DelayNode,
     }),
     []
   )
