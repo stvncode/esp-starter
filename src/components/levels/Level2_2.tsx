@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -85,16 +85,6 @@ export function Level2_2() {
   const isCompleted = completedLevels.includes("2.2")
 
   const currentItem = quizItems[currentQuestion]
-
-  // Initialize shuffled answers for current question
-  const initializeQuestion = useCallback(() => {
-    const otherItems = quizItems.filter((_, i) => i !== currentQuestion)
-    const shuffled = [...otherItems].sort(() => Math.random() - 0.5).slice(0, 3)
-    shuffled.push(quizItems[currentQuestion])
-    setShuffledAnswers(shuffled.sort(() => Math.random() - 0.5))
-    setSelectedAnswer(null)
-    setShowResult(false)
-  }, [currentQuestion])
 
   // Start quiz
   const startQuiz = useCallback(() => {

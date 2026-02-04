@@ -9,7 +9,6 @@ import {
   Hammer,
   Wifi,
   Sparkles,
-  ChevronRight,
   Lock,
   Boxes,
 } from "lucide-react"
@@ -178,7 +177,6 @@ interface PhaseGroupProps {
 
 function PhaseGroup({ phase, currentPath }: PhaseGroupProps) {
   const Icon = phase.icon
-  const isPhaseActive = currentPath.startsWith(`/level/${phase.id}`)
 
   return (
     <div className="space-y-1 overflow-hidden">

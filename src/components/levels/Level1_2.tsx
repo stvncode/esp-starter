@@ -104,37 +104,11 @@ export function Level1_2() {
   const [placedComponents, setPlacedComponents] = useState<Record<string, string>>({})
   const [draggingComponent, setDraggingComponent] = useState<string | null>(null)
   const [hoveredPin, setHoveredPin] = useState<string | null>(null)
-  const [showExplanation, setShowExplanation] = useState(true)
+  const [showExplanation] = useState(true)
   const [challengeComplete, setChallengeComplete] = useState(false)
 
   const { completeLevel, completedLevels } = useProgressStore()
   const isCompleted = completedLevels.includes("1.2")
-
-  const handleDragStart = useCallback((componentId: string) => {
-    setDraggingComponent(componentId)
-  }, [])
-
-  const handleDragEnd = useCallback(() => {
-    if (draggingComponent && hoveredPin) {
-      const pin = allPins.find((p) => p.id === hoveredPin)
-      if (pin?.type === "gpio") {
-        setPlacedComponents((prev) => {
-          // Remove from old position if it exists
-          const newPlacements = { ...prev }
-          Object.keys(newPlacements).forEach((key) => {
-            if (newPlacements[key] === draggingComponent) {
-              delete newPlacements[key]
-            }
-          })
-          // Add to new position
-          newPlacements[hoveredPin] = draggingComponent
-          return newPlacements
-        })
-      }
-    }
-    setDraggingComponent(null)
-    setHoveredPin(null)
-  }, [draggingComponent, hoveredPin])
 
   const handlePinClick = useCallback(
     (pinId: string) => {

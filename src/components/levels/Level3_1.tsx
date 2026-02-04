@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -35,34 +35,6 @@ output:
   - platform: gpio
     pin: GPIO5
     id: light_output`
-
-interface EditableField {
-  id: string
-  label: string
-  currentValue: string
-  targetValue: string
-  hint: string
-  line: number
-}
-
-const editableFields: EditableField[] = [
-  {
-    id: "button_name",
-    label: "Button Name",
-    currentValue: "My Button",
-    targetValue: "",
-    hint: "Give your button a descriptive name (e.g., 'Front Door Button')",
-    line: 4,
-  },
-  {
-    id: "light_name",
-    label: "Light Name",
-    currentValue: "My Light",
-    targetValue: "",
-    hint: "Give your light a descriptive name (e.g., 'Living Room Light')",
-    line: 11,
-  },
-]
 
 export function Level3_1() {
   const [yaml, setYaml] = useState(initialYaml)
