@@ -1,2 +1,2 @@
-export { FlowCanvas } from "./FlowCanvas"
+export { FlowCanvas, type ConnectionDroppedParams } from "./FlowCanvas"
 export * from "./nodes"

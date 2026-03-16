@@ -1,12 +1,14 @@
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, useRef } from "react"
 import {
   ReactFlow,
+  ReactFlowProvider,
   Background,
   Controls,
   MiniMap,
   applyNodeChanges,
   applyEdgeChanges,
   addEdge,
+  useReactFlow,
   type Connection,
   type Edge,
   type Node,
@@ -14,6 +16,8 @@ import {
   type EdgeChange,
   BackgroundVariant,
   type NodeTypes,
+  type NodeMouseHandler,
+  type EdgeMouseHandler,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { useTheme } from "next-themes"
@@ -23,29 +27,51 @@ import { ActionNode } from "./nodes/ActionNode"
 import { TriggerNode } from "./nodes/TriggerNode"
 import { DelayNode } from "./nodes/DelayNode"
 
+export interface ConnectionDroppedParams {
+  screenX: number
+  screenY: number
+  flowX: number
+  flowY: number
+  sourceNodeId: string
+}
+
 interface FlowCanvasProps {
   nodes: Node[]
   edges: Edge[]
   onNodesChange: (nodes: Node[]) => void
   onEdgesChange: (edges: Edge[]) => void
   onConnect?: (connection: Connection) => void
+  onNodeClick?: NodeMouseHandler
+  onEdgeClick?: EdgeMouseHandler
+  onPaneClick?: (event: React.MouseEvent) => void
+  onConnectionDropped?: (params: ConnectionDroppedParams) => void
   readonly?: boolean
   showMinimap?: boolean
   showControls?: boolean
 }
 
-export function FlowCanvas({
+// Inner component — rendered inside ReactFlowProvider so it can call useReactFlow
+function FlowCanvasInner({
   nodes,
   edges,
   onNodesChange,
   onEdgesChange,
   onConnect,
+  onNodeClick,
+  onEdgeClick,
+  onPaneClick,
+  onConnectionDropped,
   readonly = false,
   showMinimap = false,
   showControls = true,
 }: FlowCanvasProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
+  const { screenToFlowPosition } = useReactFlow()
+
+  // Track the source node when a connection drag starts
+  const connectingSourceRef = useRef<string | null>(null)
+  const justConnectedRef = useRef(false)
 
   const nodeTypes: NodeTypes = useMemo(
     () => ({
@@ -60,27 +86,61 @@ export function FlowCanvas({
 
   const handleNodesChangeInternal = useCallback(
     (changes: NodeChange[]) => {
-      const updatedNodes = applyNodeChanges(changes, nodes)
-      onNodesChange(updatedNodes as Node[])
+      onNodesChange(applyNodeChanges(changes, nodes) as Node[])
     },
     [nodes, onNodesChange]
   )
 
   const handleEdgesChangeInternal = useCallback(
     (changes: EdgeChange[]) => {
-      const updatedEdges = applyEdgeChanges(changes, edges)
-      onEdgesChange(updatedEdges as Edge[])
+      onEdgesChange(applyEdgeChanges(changes, edges) as Edge[])
     },
     [edges, onEdgesChange]
   )
 
   const handleConnect = useCallback(
     (connection: Connection) => {
+      justConnectedRef.current = true
       const newEdges = addEdge({ ...connection, animated: true }, edges)
       onEdgesChange(newEdges)
       onConnect?.(connection)
     },
     [edges, onEdgesChange, onConnect]
+  )
+
+  const handleConnectStart = useCallback(
+    (_event: MouseEvent | TouchEvent, params: { nodeId: string | null }) => {
+      connectingSourceRef.current = params.nodeId
+      justConnectedRef.current = false
+    },
+    []
+  )
+
+  const handleConnectEnd = useCallback(
+    (event: MouseEvent | TouchEvent) => {
+      // Give onConnect a chance to set the flag first (they fire in the same tick)
+      const sourceId = connectingSourceRef.current
+      connectingSourceRef.current = null
+
+      if (justConnectedRef.current || !sourceId || !onConnectionDropped) {
+        justConnectedRef.current = false
+        return
+      }
+      justConnectedRef.current = false
+
+      const clientX = "clientX" in event ? event.clientX : event.touches?.[0]?.clientX ?? 0
+      const clientY = "clientY" in event ? event.clientY : event.touches?.[0]?.clientY ?? 0
+      const flowPos = screenToFlowPosition({ x: clientX, y: clientY })
+
+      onConnectionDropped({
+        screenX: clientX,
+        screenY: clientY,
+        flowX: flowPos.x,
+        flowY: flowPos.y,
+        sourceNodeId: sourceId,
+      })
+    },
+    [screenToFlowPosition, onConnectionDropped]
   )
 
   return (
@@ -91,6 +151,11 @@ export function FlowCanvas({
         onNodesChange={handleNodesChangeInternal}
         onEdgesChange={handleEdgesChangeInternal}
         onConnect={handleConnect}
+        onConnectStart={handleConnectStart}
+        onConnectEnd={handleConnectEnd}
+        onNodeClick={onNodeClick}
+        onEdgeClick={onEdgeClick}
+        onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
         nodesDraggable={!readonly}
         nodesConnectable={!readonly}
@@ -102,7 +167,7 @@ export function FlowCanvas({
         defaultEdgeOptions={{
           animated: true,
           style: { stroke: "#6366f1", strokeWidth: 2 },
-          interactionWidth: 20, // Makes edges easier to click
+          interactionWidth: 20,
         }}
         proOptions={{ hideAttribution: true }}
       >
@@ -120,21 +185,24 @@ export function FlowCanvas({
             className="!border-border/50 !bg-card"
             nodeColor={(node) => {
               switch (node.type) {
-                case "button":
-                  return "#3b82f6"
-                case "light":
-                  return "#f59e0b"
-                case "action":
-                  return "#8b5cf6"
-                case "trigger":
-                  return "#06b6d4"
-                default:
-                  return "#6b7280"
+                case "button": return "#3b82f6"
+                case "light": return "#f59e0b"
+                case "action": return "#8b5cf6"
+                case "trigger": return "#06b6d4"
+                default: return "#6b7280"
               }
             }}
           />
         )}
       </ReactFlow>
     </div>
+  )
+}
+
+export function FlowCanvas(props: FlowCanvasProps) {
+  return (
+    <ReactFlowProvider>
+      <FlowCanvasInner {...props} />
+    </ReactFlowProvider>
   )
 }
