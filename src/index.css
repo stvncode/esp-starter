@@ -164,12 +164,14 @@
   transform: scale(1.3);
 }
 
+/* Disable the default React Flow selection border so node clicks
+   don't add a grey outline; we handle emphasis in the UI instead. */
 .react-flow__node {
-  transition: box-shadow 0.2s ease;
+  transition: none;
 }
 
 .react-flow__node.selected {
-  box-shadow: 0 0 0 2px var(--ring);
+  box-shadow: none;
 }
 
 /* Scrollbar styling */
