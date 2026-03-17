@@ -86,7 +86,7 @@ export function HomeLearningPath() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.4 }}
-        className="flex items-center justify-between"
+        className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
       >
         <div>
           <h2 className="text-2xl font-semibold">Learning Path</h2>

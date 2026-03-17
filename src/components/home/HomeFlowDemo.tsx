@@ -112,8 +112,13 @@ export function HomeFlowDemo() {
     return () => clearTimeout(t)
   }, [])
 
+  // content spans x: 24 → 468+116=584, y: 52 → 52+52=104
+  const CONTENT_W = 584
+  const CONTENT_H = NH + 52 * 2 // give equal vertical padding around the nodes
+
   return (
     <div className="relative h-[132px] w-full overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-sm">
+      {/* Full-width background grid */}
       <svg className="absolute inset-0 h-full w-full opacity-[0.04]">
         <defs>
           <pattern id="grid-home" width="24" height="24" patternUnits="userSpaceOnUse">
@@ -123,7 +128,10 @@ export function HomeFlowDemo() {
         <rect width="100%" height="100%" fill="url(#grid-home)" />
       </svg>
 
-      <svg className="absolute inset-0 h-full w-full overflow-visible">
+      {/* Centered content block */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative" style={{ width: CONTENT_W, height: CONTENT_H }}>
+      <svg className="absolute inset-0 overflow-visible" width={CONTENT_W} height={CONTENT_H}>
         {EDGES.map((edge, i) => {
           const from = FLOW_NODES[edge.from]
           const to = FLOW_NODES[edge.to]
@@ -164,6 +172,8 @@ export function HomeFlowDemo() {
       {FLOW_NODES.map((node, i) => (
         <FlowNode key={node.id} node={node} active={activeStep >= i} />
       ))}
+        </div>
+      </div>
     </div>
   )
 }

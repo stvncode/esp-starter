@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { AppShell } from "@/components/layout"
 import { Home, Level } from "@/pages"
 import { Landing } from "@/pages/Landing"
+import { NotFound } from "@/pages/NotFound"
 import { SignIn } from "@/pages/SignIn"
 import { SignUp } from "@/pages/SignUp"
 import { Workspace } from "@/pages/Workspace"
@@ -23,6 +24,9 @@ function App() {
           <Route path="/app/workspace" element={<WorkspaceHome />} />
           <Route path="/app/workspace/builder" element={<Workspace />} />
         </Route>
+
+        {/* 404 */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   )

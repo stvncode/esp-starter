@@ -111,7 +111,7 @@ export function BuilderPreviewSection() {
               </div>
 
               {/* Grid background + animated demo */}
-              <div className="relative overflow-hidden p-8">
+              <div className="relative overflow-x-auto p-4 md:p-8">
                 <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.04]">
                   <defs>
                     <pattern id="grid-builder" width="20" height="20" patternUnits="userSpaceOnUse">

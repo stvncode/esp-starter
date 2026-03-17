@@ -192,11 +192,11 @@ function PhaseGroup({ phase, currentPath }: PhaseGroupProps) {
       </div>
       <div className="space-y-0.5 overflow-hidden">
         {phase.levels.map((level) => {
-          const isActive = currentPath === `/level/${level.id}`
+          const isActive = currentPath === `/app/level/${level.id}`
           return (
             <NavLink
               key={level.id}
-              to={`/level/${level.id}`}
+              to={`/app/level/${level.id}`}
               className={cn(
                 "group relative flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all overflow-hidden",
                 isActive

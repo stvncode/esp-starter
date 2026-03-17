@@ -18,7 +18,7 @@ export function CurriculumSection() {
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mb-12 flex items-end justify-between"
+          className="mb-12 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
         >
           <div>
             <p className="mb-2 text-sm font-medium text-primary">Curriculum</p>

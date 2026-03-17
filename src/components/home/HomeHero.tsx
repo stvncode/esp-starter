@@ -10,7 +10,7 @@ export function HomeHero() {
   const { completedLevels } = useProgressStore()
 
   return (
-    <section className="grid grid-cols-2 gap-10 items-center">
+    <section className="grid grid-cols-1 gap-8 items-center lg:grid-cols-2 lg:gap-10">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -72,7 +72,9 @@ export function HomeHero() {
           <span className="flex h-2 w-2 rounded-full bg-green-400 animate-pulse" />
           Live preview — ESP32-C6 Starter Kit
         </div>
-        <HomeFlowDemo />
+        <div className="overflow-x-auto">
+          <HomeFlowDemo />
+        </div>
         <p className="text-xs text-muted-foreground text-center">
           Visual flows translate directly to ESPHome YAML — no guesswork.
         </p>

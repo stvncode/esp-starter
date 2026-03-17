@@ -37,7 +37,7 @@ export function HowItWorksSection() {
         </motion.div>
 
         <div className="relative grid gap-8 md:grid-cols-3">
-          <div className="absolute left-1/6 right-1/6 top-5 hidden h-px bg-gradient-to-r from-transparent via-border to-transparent md:block" />
+          <div className="absolute inset-x-[16%] top-5 hidden h-px bg-gradient-to-r from-transparent via-border to-transparent md:block" />
           {STEPS.map((step, i) => (
             <motion.div
               key={step.n}

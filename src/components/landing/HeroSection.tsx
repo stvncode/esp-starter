@@ -27,8 +27,8 @@ export function HeroSection({ opacity, y }: HeroSectionProps) {
         <div className="absolute right-1/4 top-1/2 h-80 w-80 rounded-full bg-indigo-500/8 blur-3xl" />
       </div>
 
-      <motion.div style={{ opacity, y }} className="relative mx-auto w-full max-w-6xl px-6 py-24">
-        <div className="grid grid-cols-2 items-center gap-16">
+      <motion.div style={{ opacity, y }} className="relative mx-auto w-full max-w-6xl px-6 py-16 md:py-24">
+        <div className="grid grid-cols-1 items-center gap-12 md:grid-cols-2 md:gap-16">
           {/* Left: copy */}
           <motion.div
             initial={{ opacity: 0, x: -24 }}
@@ -42,7 +42,7 @@ export function HeroSection({ opacity, y }: HeroSectionProps) {
             </div>
 
             <div className="space-y-4">
-              <h1 className="text-5xl font-bold leading-[1.1] tracking-tight text-foreground">
+              <h1 className="text-3xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-4xl md:text-5xl">
                 Build smart devices.{" "}
                 <span className="bg-gradient-to-r from-blue-500 via-cyan-500 to-indigo-500 bg-clip-text text-transparent">
                   Without the guesswork.
@@ -85,7 +85,7 @@ export function HeroSection({ opacity, y }: HeroSectionProps) {
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="relative"
+            className="relative mx-4 sm:mx-0"
           >
             <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-black/20">
               {/* Browser chrome */}
@@ -119,7 +119,7 @@ export function HeroSection({ opacity, y }: HeroSectionProps) {
               </div>
 
               {/* Canvas */}
-              <div className="relative overflow-hidden bg-muted/20 p-6" style={{ minHeight: 220 }}>
+              <div className="relative bg-muted/20 p-4 sm:p-6" style={{ minHeight: 220 }}>
                 <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.06]">
                   <defs>
                     <pattern id="grid-hero" width="20" height="20" patternUnits="userSpaceOnUse">
@@ -128,8 +128,10 @@ export function HeroSection({ opacity, y }: HeroSectionProps) {
                   </defs>
                   <rect width="100%" height="100%" fill="url(#grid-hero)" />
                 </svg>
-                <div className="flex items-center justify-center">
-                  <AnimatedFlowDemo />
+                <div className="overflow-x-auto">
+                  <div className="flex items-center justify-center" style={{ minWidth: "fit-content" }}>
+                    <AnimatedFlowDemo />
+                  </div>
                 </div>
               </div>
             </div>
@@ -139,7 +141,7 @@ export function HeroSection({ opacity, y }: HeroSectionProps) {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
-              className="absolute -bottom-4 -left-4 flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-lg"
+              className="absolute -bottom-4 -left-4 hidden sm:flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-lg"
             >
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/15">
                 <Droplets className="h-4 w-4 text-green-500" />
@@ -154,7 +156,7 @@ export function HeroSection({ opacity, y }: HeroSectionProps) {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1 }}
-              className="absolute -right-4 -top-4 flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-lg"
+              className="absolute -right-4 -top-4 hidden sm:flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-lg"
             >
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/15">
                 <Cpu className="h-4 w-4 text-blue-500" />
