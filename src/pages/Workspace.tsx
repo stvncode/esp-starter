@@ -7,15 +7,20 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AutomationsTab } from "@/components/workspace/AutomationsTab"
 import { buildYaml } from "@/components/workspace/buildYaml"
-import { ALL_COMPONENTS, ALL_LOGIC_NODES } from "@/components/workspace/constants"
 import { ComponentsTab } from "@/components/workspace/ComponentsTab"
+import { ALL_COMPONENTS, ALL_LOGIC_NODES } from "@/components/workspace/constants"
 import { DeviceSettingsTab } from "@/components/workspace/DeviceSettingsTab"
 import { PropertiesPanel } from "@/components/workspace/PropertiesPanel"
-import type { Automation, ComponentItem, ConnectMenu, NodeMenu, SavedProject } from "@/components/workspace/types"
+import type {
+  Automation,
+  ComponentItem,
+  ConnectMenu,
+  NodeMenu,
+  SavedProject,
+} from "@/components/workspace/types"
 import { useSimulation } from "@/components/workspace/useSimulation"
 import { WorkspaceContextMenus } from "@/components/workspace/WorkspaceContextMenus"
-import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader"
-import { YamlPreviewPanel } from "@/components/workspace/YamlPreviewPanel"
+import { WorkspaceHeader, type WorkspaceView } from "@/components/workspace/WorkspaceHeader"
 import type { Edge, EdgeMouseHandler, Node, NodeMouseHandler } from "@xyflow/react"
 import { Boxes, GitBranch, Settings } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -57,7 +62,7 @@ export function Workspace() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("generic")
-  const [showYaml, setShowYaml] = useState(false)
+  const [view, setView] = useState<WorkspaceView>("builder")
   const [connectMenu, setConnectMenu] = useState<ConnectMenu | null>(null)
   const connectMenuRef = useRef<HTMLDivElement>(null)
   const [connectMenuSearch, setConnectMenuSearch] = useState("")
@@ -152,7 +157,10 @@ export function Workspace() {
 
   // ── Undo / Redo ────────────────────────────────────────────────────────────
   const pushToHistory = useCallback((prevNodes: Node[], prevEdges: Edge[]) => {
-    undoStackRef.current = [...undoStackRef.current.slice(-49), { nodes: prevNodes, edges: prevEdges }]
+    undoStackRef.current = [
+      ...undoStackRef.current.slice(-49),
+      { nodes: prevNodes, edges: prevEdges },
+    ]
     redoStackRef.current = []
     setCanUndo(true)
     setCanRedo(false)
@@ -320,7 +328,9 @@ export function Workspace() {
   const handleDeleteNode = useCallback(() => {
     if (!selectedNodeId) return
     pushToHistory(nodes, edges)
-    setEdges((prev) => prev.filter((e) => e.source !== selectedNodeId && e.target !== selectedNodeId))
+    setEdges((prev) =>
+      prev.filter((e) => e.source !== selectedNodeId && e.target !== selectedNodeId),
+    )
     setNodes((prev) => prev.filter((n) => n.id !== selectedNodeId))
     setSelectedNodeId(null)
     setNodeMenu(null)
@@ -356,7 +366,15 @@ export function Workspace() {
 
   const saveProject = useCallback(() => {
     const project: SavedProject = {
-      name: deviceName, deviceName, board, wifiSsid, wifiPassword, area, nodes, edges, automations,
+      name: deviceName,
+      deviceName,
+      board,
+      wifiSsid,
+      wifiPassword,
+      area,
+      nodes,
+      edges,
+      automations,
       createdAt: new Date().toISOString(),
     }
     const updated = [...savedProjects.filter((p) => p.name !== deviceName), project]
@@ -380,20 +398,41 @@ export function Workspace() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isEditing = ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName)
       if (e.key === "Escape") {
-        setConnectMenu(null); setConnectMenuSearch(""); setNodeMenu(null)
-        setNodeMenuSearch(""); setSelectedNodeId(null); setSelectedEdgeId(null)
+        setConnectMenu(null)
+        setConnectMenuSearch("")
+        setNodeMenu(null)
+        setNodeMenuSearch("")
+        setSelectedNodeId(null)
+        setSelectedEdgeId(null)
       }
       if ((e.key === "Delete" || e.key === "Backspace") && !isEditing) {
         if (selectedNodeId) handleDeleteNode()
         else if (selectedEdgeId) handleDeleteEdge()
       }
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === "z") { e.preventDefault(); handleUndo() }
-      if ((e.metaKey || e.ctrlKey) && (e.key === "y" || (e.shiftKey && e.key === "z"))) { e.preventDefault(); handleRedo() }
-      if ((e.metaKey || e.ctrlKey) && e.key === "d" && !isEditing) { e.preventDefault(); if (selectedNodeId) handleDuplicateNode() }
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === "z") {
+        e.preventDefault()
+        handleUndo()
+      }
+      if ((e.metaKey || e.ctrlKey) && (e.key === "y" || (e.shiftKey && e.key === "z"))) {
+        e.preventDefault()
+        handleRedo()
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "d" && !isEditing) {
+        e.preventDefault()
+        if (selectedNodeId) handleDuplicateNode()
+      }
     }
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [selectedNodeId, selectedEdgeId, handleDeleteNode, handleDeleteEdge, handleUndo, handleRedo, handleDuplicateNode])
+  }, [
+    selectedNodeId,
+    selectedEdgeId,
+    handleDeleteNode,
+    handleDeleteEdge,
+    handleUndo,
+    handleRedo,
+    handleDuplicateNode,
+  ])
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
@@ -406,7 +445,7 @@ export function Workspace() {
         isSimulating={isSimulating}
         nodesEmpty={nodes.length === 0}
         copied={copied}
-        showYaml={showYaml}
+        view={view}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onSimulate={runSimulation}
@@ -414,28 +453,35 @@ export function Workspace() {
         onSave={saveProject}
         onCopyYaml={copyYaml}
         onDownloadYaml={downloadYaml}
-        onToggleYaml={() => setShowYaml((v) => !v)}
+        onViewChange={setView}
       />
 
       <div className="flex min-h-0 flex-1 gap-6 overflow-hidden">
-        {/* Canvas column */}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden">
-          <div className="min-h-0 flex-1">
-            <FlowCanvas
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={setNodes}
-              onEdgesChange={setEdges}
-              onNodeClick={handleNodeClick}
-              onEdgeClick={handleEdgeClick}
-              onPaneClick={handlePaneClick}
-              onConnectionDropped={handleConnectionDropped}
-              onPaneContextMenu={handlePaneContextMenu}
-              showControls
-              showMinimap
-            />
-          </div>
-          <YamlPreviewPanel show={showYaml} yaml={yaml} onClose={() => setShowYaml(false)} />
+        {/* Canvas / YAML column */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {view === "builder" ? (
+            <div className="min-h-0 flex-1">
+              <FlowCanvas
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={setNodes}
+                onEdgesChange={setEdges}
+                onNodeClick={handleNodeClick}
+                onEdgeClick={handleEdgeClick}
+                onPaneClick={handlePaneClick}
+                onConnectionDropped={handleConnectionDropped}
+                onPaneContextMenu={handlePaneContextMenu}
+                showControls
+                showMinimap={false}
+              />
+            </div>
+          ) : (
+            <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border/50 bg-gray-950 p-5">
+              <pre className="font-mono text-sm leading-relaxed text-green-300 whitespace-pre">
+                {yaml}
+              </pre>
+            </div>
+          )}
         </div>
 
         {/* Right panel */}
@@ -484,7 +530,10 @@ export function Workspace() {
             onDuplicateNode={handleDuplicateNode}
             onDeleteNode={handleDeleteNode}
             onDeleteEdge={handleDeleteEdge}
-            onClose={() => { setSelectedNodeId(null); setSelectedEdgeId(null) }}
+            onClose={() => {
+              setSelectedNodeId(null)
+              setSelectedEdgeId(null)
+            }}
           />
 
           {!selectedNode && !selectedEdge && (
@@ -514,7 +563,10 @@ export function Workspace() {
         filteredCanvasNodes={filteredCanvasNodes}
         onConnectMenuSearchChange={setConnectMenuSearch}
         onAddContextualNode={handleAddContextualNode}
-        onConnectMenuClose={() => { setConnectMenu(null); setConnectMenuSearch("") }}
+        onConnectMenuClose={() => {
+          setConnectMenu(null)
+          setConnectMenuSearch("")
+        }}
         nodeMenu={nodeMenu}
         selectedNode={selectedNode}
         nodeMenuSearch={nodeMenuSearch}
@@ -522,7 +574,10 @@ export function Workspace() {
         filteredNodeMenuNodes={filteredNodeMenuNodes}
         onNodeMenuSearchChange={setNodeMenuSearch}
         onAddContextualNodeFromNodeMenu={handleAddContextualNodeFromNodeMenu}
-        onNodeMenuClose={() => { setNodeMenu(null); setNodeMenuSearch("") }}
+        onNodeMenuClose={() => {
+          setNodeMenu(null)
+          setNodeMenuSearch("")
+        }}
         onDuplicateNode={handleDuplicateNode}
         onDeleteNode={handleDeleteNode}
       />
