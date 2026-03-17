@@ -18,8 +18,6 @@ import { cn } from "@/lib/utils"
 import { useProgressStore } from "@/stores/progressStore"
 import { Link } from "react-router-dom"
 
-const REQUIRED_DELAY = "delay: 5s"
-
 const buildYaml = (extraLines: string) => {
   const lines = extraLines.trim() ? `        - light.turn_on: my_light\n${extraLines.split("\n").map(l => `        ${l}`).join("\n")}\n        - light.turn_off: my_light` : `        - light.turn_on: my_light\n        - light.turn_off: my_light`
   return `binary_sensor:

@@ -8,12 +8,15 @@ export function buildYaml(
   wifiSsid: string,
   wifiPassword: string,
   automations: Automation[],
+  board = "esp32dev",
 ): string {
   const buttons = nodes.filter((n) => n.type === "button")
   const lights = nodes.filter((n) => n.type === "light")
   let out = `esphome:\n  name: ${(deviceName || "my-device").toLowerCase().replace(/\s+/g, "-")}\n`
   if (area) out += `  area: "${area}"\n`
-  out += `\nesp32:\n  board: esp32dev\n\nwifi:\n  ssid: "${wifiSsid || "YourNetwork"}"\n  password: "${wifiPassword || "YourPassword"}"\n\napi:\n\nlogger:\n\n`
+  const needsIdf = ["esp32-c6", "esp32-s3", "esp32-s2"].some((v) => board.includes(v))
+  const frameworkLine = needsIdf ? "\n  framework:\n    type: esp-idf" : ""
+  out += `\nesp32:\n  board: ${board}${frameworkLine}\n\nwifi:\n  ssid: "${wifiSsid || "YourNetwork"}"\n  password: "${wifiPassword || "YourPassword"}"\n\napi:\n\nlogger:\n\n`
   if (buttons.length > 0) {
     out += `binary_sensor:\n`
     buttons.forEach((btn) => {

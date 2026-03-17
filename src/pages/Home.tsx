@@ -1,28 +1,29 @@
-import { motion } from "framer-motion"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { useProgressStore } from "@/stores/progressStore"
+import { motion } from "framer-motion"
 import {
-  Lightbulb,
-  Code2,
-  Pencil,
-  Hammer,
-  Wifi,
-  Sparkles,
-  Play,
-  Trophy,
-  Zap,
   CheckCircle2,
+  Code2,
+  Hammer,
+  Lightbulb,
+  Pencil,
+  Play,
+  Sparkles,
+  Trophy,
+  Wifi,
+  Wrench,
+  Zap,
 } from "lucide-react"
 import { Link } from "react-router-dom"
-import { useProgressStore } from "@/stores/progressStore"
 
 const phases = [
   {
     id: 1,
     title: "Visual Understanding",
-    description: "Learn the mental model of smart devices through interactive diagrams",
+    description: "Learn the mental model of smart devices",
     icon: Lightbulb,
     color: "from-amber-500 to-orange-500",
     bgGlow: "bg-amber-500/20",
@@ -125,18 +126,22 @@ export function Home() {
             <Badge className="mb-4 bg-white/20 text-white hover:bg-white/30">
               Starter Kit Guide
             </Badge>
-            <h1 className="mb-2 text-4xl font-bold text-white">
-              Welcome to ESPHome Learning
-            </h1>
+            <h1 className="mb-2 text-4xl font-bold text-white">Welcome to ESPHome Learning</h1>
             <p className="mb-6 max-w-2xl text-lg text-blue-100">
-              Master ESPHome from zero to hero. Start with visual concepts, progress to
-              writing configurations, and finish by flashing real hardware.
+              Master ESPHome from zero to hero. Start with visual concepts, progress to writing
+              configurations, and finish by flashing real hardware.
             </p>
             <div className="flex gap-4">
               <Button asChild size="lg" className="bg-white text-blue-600 hover:bg-blue-50">
                 <Link to="/level/1.1">
                   <Play className="mr-2 h-4 w-4" />
                   Start Learning
+                </Link>
+              </Button>
+              <Button asChild size="lg" className="bg-white text-blue-600 hover:bg-blue-50">
+                <Link to="/workspace">
+                  <Wrench className="mr-2 h-4 w-4" />
+                  Open Workspace
                 </Link>
               </Button>
             </div>

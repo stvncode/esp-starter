@@ -19,16 +19,32 @@ import { YamlPreviewPanel } from "@/components/workspace/YamlPreviewPanel"
 import type { Edge, EdgeMouseHandler, Node, NodeMouseHandler } from "@xyflow/react"
 import { Boxes, GitBranch, Settings } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useLocation } from "react-router-dom"
 import { toast } from "sonner"
 
+interface WorkspaceInitState {
+  deviceName?: string
+  board?: string
+  wifiSsid?: string
+  wifiPassword?: string
+  area?: string
+  nodes?: Node[]
+  edges?: Edge[]
+  automations?: Automation[]
+}
+
 export function Workspace() {
-  const [nodes, setNodes] = useState<Node[]>([])
-  const [edges, setEdges] = useState<Edge[]>([])
-  const [deviceName, setDeviceName] = useState("my-device")
-  const [wifiSsid, setWifiSsid] = useState("")
-  const [wifiPassword, setWifiPassword] = useState("")
-  const [area, setArea] = useState("")
-  const [automations, setAutomations] = useState<Automation[]>([])
+  const location = useLocation()
+  const init: WorkspaceInitState = (location.state as WorkspaceInitState) ?? {}
+
+  const [nodes, setNodes] = useState<Node[]>(init.nodes ?? [])
+  const [edges, setEdges] = useState<Edge[]>(init.edges ?? [])
+  const [deviceName, setDeviceName] = useState(init.deviceName ?? "my-device")
+  const [board, setBoard] = useState(init.board ?? "esp32dev")
+  const [wifiSsid, setWifiSsid] = useState(init.wifiSsid ?? "")
+  const [wifiPassword, setWifiPassword] = useState(init.wifiPassword ?? "")
+  const [area, setArea] = useState(init.area ?? "")
+  const [automations, setAutomations] = useState<Automation[]>(init.automations ?? [])
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>(() => {
     try {
       const saved = localStorage.getItem("workspace-projects")
@@ -66,8 +82,8 @@ export function Workspace() {
   const outputNodes = useMemo(() => nodes.filter((n) => n.type === "light"), [nodes])
 
   const yaml = useMemo(
-    () => buildYaml(nodes, deviceName, area, wifiSsid, wifiPassword, automations),
-    [nodes, deviceName, area, wifiSsid, wifiPassword, automations],
+    () => buildYaml(nodes, deviceName, area, wifiSsid, wifiPassword, automations, board),
+    [nodes, deviceName, area, wifiSsid, wifiPassword, automations, board],
   )
 
   const filteredConnectNodes = useMemo(() => {
@@ -340,14 +356,14 @@ export function Workspace() {
 
   const saveProject = useCallback(() => {
     const project: SavedProject = {
-      name: deviceName, deviceName, wifiSsid, wifiPassword, area, nodes, edges, automations,
+      name: deviceName, deviceName, board, wifiSsid, wifiPassword, area, nodes, edges, automations,
       createdAt: new Date().toISOString(),
     }
     const updated = [...savedProjects.filter((p) => p.name !== deviceName), project]
     setSavedProjects(updated)
     localStorage.setItem("workspace-projects", JSON.stringify(updated))
     toast.success("Project saved!")
-  }, [deviceName, wifiSsid, wifiPassword, area, nodes, edges, automations, savedProjects])
+  }, [deviceName, board, wifiSsid, wifiPassword, area, nodes, edges, automations, savedProjects])
 
   const addAutomation = useCallback((data: Omit<Automation, "id">) => {
     setAutomations((prev) => [...prev, { ...data, id: `auto-${Date.now()}` }])
@@ -441,10 +457,12 @@ export function Workspace() {
             </TabsList>
             <DeviceSettingsTab
               deviceName={deviceName}
+              board={board}
               area={area}
               wifiSsid={wifiSsid}
               wifiPassword={wifiPassword}
               onDeviceNameChange={setDeviceName}
+              onBoardChange={setBoard}
               onAreaChange={setArea}
               onWifiSsidChange={setWifiSsid}
               onWifiPasswordChange={setWifiPassword}

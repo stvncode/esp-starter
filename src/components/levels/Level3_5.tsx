@@ -99,7 +99,7 @@ const getLineColor = (line: string) => {
 export function Level3_5() {
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({})
-  const [levelComplete, setLevelComplete] = useState(false)
+  const [, setLevelComplete] = useState(false)
 
   const { completeLevel, completedLevels } = useProgressStore()
   const isCompleted = completedLevels.includes("3.5")

@@ -126,12 +126,14 @@ function FlowCanvasInner({
   )
 
   const handlePaneContextMenu = useCallback(
-    (event: React.MouseEvent) => {
+    (event: MouseEvent | React.MouseEvent) => {
       event.preventDefault()
-      const flowPos = screenToFlowPosition({ x: event.clientX, y: event.clientY })
+      const clientX = "clientX" in event ? event.clientX : 0
+      const clientY = "clientY" in event ? event.clientY : 0
+      const flowPos = screenToFlowPosition({ x: clientX, y: clientY })
       onPaneContextMenu?.({
-        screenX: event.clientX,
-        screenY: event.clientY,
+        screenX: clientX,
+        screenY: clientY,
         flowX: flowPos.x,
         flowY: flowPos.y,
       })

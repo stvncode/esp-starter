@@ -1,4 +1,5 @@
-import { CircleDot, Clock, Lightbulb, Power, Radio, Thermometer, Zap } from "lucide-react"
+import type { Node } from "@xyflow/react"
+import { Bell, CircleDot, Clock, Droplets, Lightbulb, Power, Radio, Thermometer, Zap } from "lucide-react"
 import type { ComponentItem } from "./types"
 
 export const hardwareComponents: ComponentItem[] = [
@@ -33,6 +34,16 @@ export const hardwareComponents: ComponentItem[] = [
     data: { label: "Temperature", pin: "GPIO27" },
   },
   {
+    id: "aht20",
+    type: "button",
+    label: "AHT20 Sensor",
+    icon: Droplets,
+    color: "text-teal-400",
+    bgColor: "bg-teal-500/20",
+    category: "Input",
+    data: { label: "AHT20 Temp/Humidity", pin: "GPIO6" },
+  },
+  {
     id: "light",
     type: "light",
     label: "Light",
@@ -51,6 +62,26 @@ export const hardwareComponents: ComponentItem[] = [
     bgColor: "bg-green-500/20",
     category: "Output",
     data: { label: "Status LED", pin: "GPIO2", isOn: false },
+  },
+  {
+    id: "rgb_led",
+    type: "light",
+    label: "RGB LED Array",
+    icon: Lightbulb,
+    color: "text-violet-400",
+    bgColor: "bg-violet-500/20",
+    category: "Output",
+    data: { label: "RGB LED Array", pin: "GPIO8", isOn: false },
+  },
+  {
+    id: "buzzer",
+    type: "light",
+    label: "Buzzer",
+    icon: Bell,
+    color: "text-rose-400",
+    bgColor: "bg-rose-500/20",
+    category: "Output",
+    data: { label: "Buzzer", pin: "GPIO5", isOn: false },
   },
 ]
 
@@ -222,4 +253,47 @@ export const ACTION_OPTIONS = [
   { value: "turn_on", label: "Turn On" },
   { value: "turn_off", label: "Turn Off" },
   { value: "toggle", label: "Toggle" },
+]
+
+export const BOARD_OPTIONS = [
+  { value: "esp32-c6-devkitc-1", label: "ESP32-C6 DevKit", framework: "esp-idf" },
+  { value: "esp32dev", label: "ESP32 Dev Module", framework: "arduino" },
+  { value: "esp32-s3-devkitc-1", label: "ESP32-S3 DevKit", framework: "esp-idf" },
+  { value: "esp32-s2-saola-1", label: "ESP32-S2 Saola", framework: "esp-idf" },
+  { value: "nodemcu-32s", label: "NodeMCU-32S", framework: "arduino" },
+]
+
+export const STARTER_KIT_BOARD = "esp32-c6-devkitc-1"
+
+export const STARTER_KIT_NODES: Node[] = [
+  {
+    id: "sk-button-1",
+    type: "button",
+    position: { x: 80, y: 60 },
+    data: { label: "Button", pin: "GPIO9" },
+  },
+  {
+    id: "sk-aht20-1",
+    type: "button",
+    position: { x: 80, y: 200 },
+    data: { label: "AHT20 Temp/Humidity", pin: "GPIO6" },
+  },
+  {
+    id: "sk-pir-1",
+    type: "button",
+    position: { x: 80, y: 340 },
+    data: { label: "PIR Motion", pin: "GPIO2" },
+  },
+  {
+    id: "sk-rgb-1",
+    type: "light",
+    position: { x: 420, y: 130 },
+    data: { label: "RGB LED Array", pin: "GPIO8", isOn: false },
+  },
+  {
+    id: "sk-buzzer-1",
+    type: "light",
+    position: { x: 420, y: 280 },
+    data: { label: "Buzzer", pin: "GPIO5", isOn: false },
+  },
 ]

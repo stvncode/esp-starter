@@ -9,7 +9,6 @@ import {
   Hammer,
   Wifi,
   Sparkles,
-  Lock,
   Wrench,
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
@@ -134,6 +133,7 @@ export function Sidebar() {
         {/* Workspace Link */}
         <NavLink
           to="/workspace"
+          end={false}
           className={({ isActive }) =>
             cn(
               "mb-4 flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium transition-colors",
@@ -189,9 +189,6 @@ function PhaseGroup({ phase, currentPath }: PhaseGroupProps) {
           <Icon className="h-3.5 w-3.5" />
         </div>
         <span className="min-w-0 truncate flex-1">Phase {phase.id}</span>
-        {phase.locked && (
-          <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        )}
       </div>
       <div className="space-y-0.5 overflow-hidden">
         {phase.levels.map((level) => {
@@ -199,14 +196,12 @@ function PhaseGroup({ phase, currentPath }: PhaseGroupProps) {
           return (
             <NavLink
               key={level.id}
-              to={phase.locked ? "#" : `/level/${level.id}`}
+              to={`/level/${level.id}`}
               className={cn(
                 "group relative flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all overflow-hidden",
-                phase.locked
-                  ? "cursor-not-allowed opacity-50"
-                  : isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                isActive
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
               )}
             >
               {isActive && (

@@ -23,6 +23,7 @@ export interface Automation {
 export interface SavedProject {
   name: string
   deviceName: string
+  board: string
   wifiSsid: string
   wifiPassword: string
   area: string

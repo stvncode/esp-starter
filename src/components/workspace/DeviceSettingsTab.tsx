@@ -1,14 +1,24 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { TabsContent } from "@/components/ui/tabs"
 import { Cpu, MapPin, Wifi } from "lucide-react"
+import { BOARD_OPTIONS } from "./constants"
 
 interface DeviceSettingsTabProps {
   deviceName: string
+  board: string
   area: string
   wifiSsid: string
   wifiPassword: string
   onDeviceNameChange: (v: string) => void
+  onBoardChange: (v: string) => void
   onAreaChange: (v: string) => void
   onWifiSsidChange: (v: string) => void
   onWifiPasswordChange: (v: string) => void
@@ -16,10 +26,12 @@ interface DeviceSettingsTabProps {
 
 export function DeviceSettingsTab({
   deviceName,
+  board,
   area,
   wifiSsid,
   wifiPassword,
   onDeviceNameChange,
+  onBoardChange,
   onAreaChange,
   onWifiSsidChange,
   onWifiPasswordChange,
@@ -44,6 +56,24 @@ export function DeviceSettingsTab({
               className="h-8 text-sm"
             />
             <p className="text-[11px] text-muted-foreground">Used as the ESPHome hostname</p>
+          </div>
+          <div className="space-y-1.5">
+            <p className="flex items-center gap-1.5 text-xs font-medium">
+              <Cpu className="h-3.5 w-3.5 text-muted-foreground" />
+              Board
+            </p>
+            <Select value={board} onValueChange={onBoardChange}>
+              <SelectTrigger className="h-8 w-full text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BOARD_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <p className="flex items-center gap-1.5 text-xs font-medium">
