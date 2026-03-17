@@ -88,7 +88,6 @@ const phases = [
     icon: Sparkles,
     color: "text-pink-400",
     bgColor: "bg-pink-400/10",
-    locked: true,
     levels: [
       { id: "6.1", title: "Lambdas" },
       { id: "6.2", title: "Custom components" },

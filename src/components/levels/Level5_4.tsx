@@ -13,10 +13,12 @@ import {
   CircleDot,
   Sparkles,
   ArrowRight,
+  ChevronRight,
   Lock,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useProgressStore } from "@/stores/progressStore"
+import { Link } from "react-router-dom"
 
 const apiYaml = `api:
   encryption:
@@ -252,13 +254,15 @@ export function Level5_4() {
                 </div>
 
                 <p className="text-sm text-muted-foreground mb-6">
-                  Your ESPHome journey continues. Phase 6 will cover advanced topics like
-                  custom sensors, scripts, and automations with multiple conditions.
+                  Your ESPHome journey continues. Phase 6 covers advanced topics: lambdas, custom
+                  components, and I2C/SPI devices.
                 </p>
 
-                <Button disabled className="opacity-50 cursor-not-allowed">
-                  <Lock className="mr-2 h-4 w-4" />
-                  Continue to Phase 6 (coming soon)
+                <Button asChild>
+                  <Link to="/level/6.1">
+                    Continue to Phase 6
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Link>
                 </Button>
               </CardContent>
             </Card>
