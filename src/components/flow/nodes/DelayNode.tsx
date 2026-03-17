@@ -10,6 +10,7 @@ export interface DelayNodeData {
 }
 
 export const DelayNode = memo(function DelayNode({
+  id,
   data,
   selected,
 }: NodeProps & { data: DelayNodeData }) {
@@ -57,11 +58,22 @@ export const DelayNode = memo(function DelayNode({
         className="!h-3 !w-3 !border-2 !border-orange-400 !bg-orange-500"
       />
 
-      {/* Output handle */}
+      {/* Output handle (click to open add-node palette) */}
       <Handle
         type="source"
         position={Position.Right}
-        className="!h-3 !w-3 !border-2 !border-orange-400 !bg-orange-500"
+        className="!h-3 !w-3 !border-2 !border-orange-400 !bg-orange-500 cursor-pointer"
+        onClick={(event) => {
+          event.stopPropagation()
+          const customEvent = new CustomEvent("esp-node-handle-click", {
+            detail: {
+              nodeId: id,
+              clientX: (event as React.MouseEvent).clientX,
+              clientY: (event as React.MouseEvent).clientY,
+            },
+          })
+          window.dispatchEvent(customEvent)
+        }}
       />
 
       {/* Category badge */}

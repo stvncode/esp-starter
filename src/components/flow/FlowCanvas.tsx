@@ -35,6 +35,13 @@ export interface ConnectionDroppedParams {
   sourceNodeId: string
 }
 
+export interface PaneContextMenuParams {
+  screenX: number
+  screenY: number
+  flowX: number
+  flowY: number
+}
+
 interface FlowCanvasProps {
   nodes: Node[]
   edges: Edge[]
@@ -45,6 +52,7 @@ interface FlowCanvasProps {
   onEdgeClick?: EdgeMouseHandler
   onPaneClick?: (event: React.MouseEvent) => void
   onConnectionDropped?: (params: ConnectionDroppedParams) => void
+  onPaneContextMenu?: (params: PaneContextMenuParams) => void
   readonly?: boolean
   showMinimap?: boolean
   showControls?: boolean
@@ -61,6 +69,7 @@ function FlowCanvasInner({
   onEdgeClick,
   onPaneClick,
   onConnectionDropped,
+  onPaneContextMenu,
   readonly = false,
   showMinimap = false,
   showControls = true,
@@ -116,6 +125,20 @@ function FlowCanvasInner({
     []
   )
 
+  const handlePaneContextMenu = useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault()
+      const flowPos = screenToFlowPosition({ x: event.clientX, y: event.clientY })
+      onPaneContextMenu?.({
+        screenX: event.clientX,
+        screenY: event.clientY,
+        flowX: flowPos.x,
+        flowY: flowPos.y,
+      })
+    },
+    [screenToFlowPosition, onPaneContextMenu]
+  )
+
   const handleConnectEnd = useCallback(
     (event: MouseEvent | TouchEvent) => {
       // Give onConnect a chance to set the flag first (they fire in the same tick)
@@ -156,6 +179,7 @@ function FlowCanvasInner({
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
         onPaneClick={onPaneClick}
+        onPaneContextMenu={onPaneContextMenu ? handlePaneContextMenu : undefined}
         nodeTypes={nodeTypes}
         nodesDraggable={!readonly}
         nodesConnectable={!readonly}

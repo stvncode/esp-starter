@@ -139,17 +139,6 @@ export function Home() {
                   Start Learning
                 </Link>
               </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="border-white/30 bg-white/10 text-white hover:bg-white/20"
-              >
-                <Link to="/sandbox">
-                  <Zap className="mr-2 h-4 w-4" />
-                  Sandbox Mode
-                </Link>
-              </Button>
             </div>
           </div>
           {/* Decorative elements */}

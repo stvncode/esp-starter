@@ -36,6 +36,7 @@ const actionColors: Record<ActionType, { border: string; bg: string; text: strin
 }
 
 export const ActionNode = memo(function ActionNode({
+  id,
   data,
   selected,
 }: NodeProps & { data: ActionNodeData }) {
@@ -81,11 +82,22 @@ export const ActionNode = memo(function ActionNode({
         className="!h-3 !w-3 !border-2 !border-gray-400 !bg-gray-500"
       />
 
-      {/* Output handle */}
+      {/* Output handle (click to open add-node palette) */}
       <Handle
         type="source"
         position={Position.Right}
-        className="!h-3 !w-3 !border-2 !border-gray-400 !bg-gray-500"
+        className="!h-3 !w-3 !border-2 !border-gray-400 !bg-gray-500 cursor-pointer"
+        onClick={(event) => {
+          event.stopPropagation()
+          const customEvent = new CustomEvent("esp-node-handle-click", {
+            detail: {
+              nodeId: id,
+              clientX: (event as React.MouseEvent).clientX,
+              clientY: (event as React.MouseEvent).clientY,
+            },
+          })
+          window.dispatchEvent(customEvent)
+        }}
       />
 
       {/* Category badge */}

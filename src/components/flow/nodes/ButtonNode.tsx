@@ -10,6 +10,7 @@ export interface ButtonNodeData {
 }
 
 export const ButtonNode = memo(function ButtonNode({
+  id,
   data,
   selected,
 }: NodeProps & { data: ButtonNodeData }) {
@@ -52,11 +53,24 @@ export const ButtonNode = memo(function ButtonNode({
         </span>
       )}
 
-      {/* Output handle */}
+      {/* Output handle (click to open add-node palette) */}
       <Handle
         type="source"
         position={Position.Right}
-        className="!h-3 !w-3 !border-2 !border-blue-400 !bg-blue-500"
+        className="!h-3 !w-3 !border-2 !border-blue-400 !bg-blue-500 cursor-pointer"
+        onClick={(event) => {
+          // Mark this node as the one whose handle was clicked so the workspace
+          // can open the palette at the handle position.
+          event.stopPropagation()
+          const customEvent = new CustomEvent("esp-node-handle-click", {
+            detail: {
+              nodeId: id,
+              clientX: (event as React.MouseEvent).clientX,
+              clientY: (event as React.MouseEvent).clientY,
+            },
+          })
+          window.dispatchEvent(customEvent)
+        }}
       />
 
       {/* Category badge */}

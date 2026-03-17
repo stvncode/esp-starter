@@ -1,15 +1,11 @@
-import { FlowCanvas, type ConnectionDroppedParams } from "@/components/flow"
+import {
+  FlowCanvas,
+  type ConnectionDroppedParams,
+  type PaneContextMenuParams,
+} from "@/components/flow"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
@@ -32,7 +28,6 @@ import {
   Copy,
   Cpu,
   Download,
-  FolderOpen,
   GitBranch,
   Lightbulb,
   MapPin,
@@ -40,13 +35,14 @@ import {
   Plus,
   Power,
   Radio,
-  RotateCcw,
+  Redo2,
   Save,
   Search,
   Settings,
   Square,
   Thermometer,
   Trash2,
+  Undo2,
   Wifi,
   X,
   Zap,
@@ -94,6 +90,7 @@ interface ConnectMenu {
   flowX: number
   flowY: number
   sourceNodeId: string
+  menuType: "connect" | "canvas"
 }
 
 // ─── Hardware components (what lives in the Components panel) ─────────────────
@@ -311,6 +308,8 @@ const ALL_LOGIC_NODES: ComponentItem[] = [
 ]
 
 const LOGIC_CATEGORIES = ["Trigger", "Action", "Timing", "Output"] as const
+const CANVAS_CATEGORIES = ["Input", "Trigger", "Action", "Timing", "Output"] as const
+const ALL_COMPONENTS: ComponentItem[] = [...hardwareComponents, ...ALL_LOGIC_NODES]
 
 const TRIGGER_OPTIONS = [
   { value: "on_press", label: "When Pressed" },
@@ -341,15 +340,31 @@ interface NodePaletteProps {
   search: string
   onSearchChange: (v: string) => void
   filtered: ComponentItem[]
+  categories: readonly string[]
   onSelect: (item: ComponentItem) => void
   onClose: () => void
   footer?: React.ReactNode
 }
 
 const NodePalette = forwardRef<HTMLDivElement, NodePaletteProps>(function NodePalette(
-  { x, y, title, subtitle, search, onSearchChange, filtered, onSelect, onClose, footer },
+  {
+    x,
+    y,
+    title,
+    subtitle,
+    search,
+    onSearchChange,
+    filtered,
+    categories,
+    onSelect,
+    onClose,
+    footer,
+  },
   ref,
 ) {
+  // Clamp to viewport so palette never goes off-screen
+  const top = Math.max(8, Math.min(y, window.innerHeight - 480))
+  const left = Math.max(8, Math.min(x, window.innerWidth - 240))
   return (
     <motion.div
       ref={ref}
@@ -357,7 +372,7 @@ const NodePalette = forwardRef<HTMLDivElement, NodePaletteProps>(function NodePa
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.12 }}
-      style={{ top: y, left: x }}
+      style={{ top, left }}
       className="fixed z-[9999] w-56 overflow-hidden rounded-xl border border-border/60 bg-popover shadow-xl"
     >
       {/* Header */}
@@ -389,12 +404,12 @@ const NodePalette = forwardRef<HTMLDivElement, NodePaletteProps>(function NodePa
       </div>
 
       {/* Items grouped by category */}
-      <ScrollArea className="max-h-[160px] overflow-y-auto">
+      <ScrollArea className="max-h-[130px] overflow-y-auto">
         <div className="p-1.5">
           {filtered.length === 0 ? (
             <p className="py-4 text-center text-xs text-muted-foreground">No results</p>
           ) : (
-            LOGIC_CATEGORIES.map((cat) => {
+            categories.map((cat) => {
               const items = filtered.filter((n) => n.category === cat)
               if (items.length === 0) return null
               return (
@@ -454,7 +469,6 @@ export function Workspace() {
     }
   })
   const [copied, setCopied] = useState(false)
-  const [loadDialogOpen, setLoadDialogOpen] = useState(false)
   const [isSimulating, setIsSimulating] = useState(false)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
@@ -467,6 +481,12 @@ export function Workspace() {
   const [nodeMenu, setNodeMenu] = useState<NodeMenu | null>(null)
   const nodeMenuRef = useRef<HTMLDivElement>(null)
   const [nodeMenuSearch, setNodeMenuSearch] = useState("")
+
+  // Undo / Redo history
+  const undoStackRef = useRef<{ nodes: Node[]; edges: Edge[] }[]>([])
+  const redoStackRef = useRef<{ nodes: Node[]; edges: Edge[] }[]>([])
+  const [canUndo, setCanUndo] = useState(false)
+  const [canRedo, setCanRedo] = useState(false)
 
   const [newAuto, setNewAuto] = useState({
     sourceNodeId: "",
@@ -509,6 +529,28 @@ export function Workspace() {
     return () => document.removeEventListener("mousedown", handleClick)
   }, [nodeMenu])
 
+  // Open node menu when a node's handle "dot" is clicked
+  useEffect(() => {
+    type HandleClickDetail = { nodeId: string; clientX: number; clientY: number }
+
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<HandleClickDetail>).detail
+      if (!detail) return
+      setSelectedNodeId(detail.nodeId)
+      setSelectedEdgeId(null)
+      setConnectMenu(null)
+      setConnectMenuSearch("")
+      setNodeMenuSearch("")
+      setNodeMenu({
+        screenX: detail.clientX,
+        screenY: detail.clientY,
+        nodeId: detail.nodeId,
+      })
+    }
+    window.addEventListener("esp-node-handle-click", handler as EventListener)
+    return () => window.removeEventListener("esp-node-handle-click", handler as EventListener)
+  }, [])
+
   // ── YAML ──────────────────────────────────────────────────────────────────
   const yaml = useMemo(() => {
     const buttons = nodes.filter((n) => n.type === "button")
@@ -549,13 +591,15 @@ export function Workspace() {
   }, [nodes, deviceName, area, wifiSsid, wifiPassword, automations])
 
   // ── Canvas handlers ────────────────────────────────────────────────────────
-  const handleNodeClick = useCallback<NodeMouseHandler>((event, node) => {
+  // We no longer open the palette on full-node click — that is now triggered
+  // from clicking the handle "dot" on each node. Node clicks just handle
+  // selection state.
+  const handleNodeClick = useCallback<NodeMouseHandler>((_event, node) => {
     setSelectedNodeId(node.id)
     setSelectedEdgeId(null)
     setConnectMenu(null)
     setConnectMenuSearch("")
-    setNodeMenuSearch("")
-    setNodeMenu({ screenX: event.clientX, screenY: event.clientY, nodeId: node.id })
+    setNodeMenu(null)
   }, [])
 
   const handleEdgeClick = useCallback<EdgeMouseHandler>((_e, edge) => {
@@ -579,14 +623,25 @@ export function Workspace() {
       const sourceNode = nodes.find((n) => n.id === params.sourceNodeId)
       if (!sourceNode) return
       setConnectMenuSearch("")
-      setConnectMenu(params)
+      setConnectMenu({ ...params, menuType: "connect" })
     },
     [nodes],
   )
 
+  const pushToHistory = useCallback((prevNodes: Node[], prevEdges: Edge[]) => {
+    undoStackRef.current = [
+      ...undoStackRef.current.slice(-49),
+      { nodes: prevNodes, edges: prevEdges },
+    ]
+    redoStackRef.current = []
+    setCanUndo(true)
+    setCanRedo(false)
+  }, [])
+
   const handleAddContextualNode = useCallback(
     (option: ComponentItem) => {
       if (!connectMenu) return
+      pushToHistory(nodes, edges)
       const newNode: Node = {
         id: `${option.id}-${Date.now()}`,
         type: option.type,
@@ -594,20 +649,22 @@ export function Workspace() {
         data: { ...option.data },
       }
       setNodes((prev) => [...prev, newNode])
-      setEdges((prev) => [
-        ...prev,
-        {
-          id: `e-${connectMenu.sourceNodeId}-${newNode.id}`,
-          source: connectMenu.sourceNodeId,
-          target: newNode.id,
-          animated: true,
-          style: { stroke: "#6366f1", strokeWidth: 2 },
-        },
-      ])
+      if (connectMenu.sourceNodeId) {
+        setEdges((prev) => [
+          ...prev,
+          {
+            id: `e-${connectMenu.sourceNodeId}-${newNode.id}`,
+            source: connectMenu.sourceNodeId,
+            target: newNode.id,
+            animated: true,
+            style: { stroke: "#6366f1", strokeWidth: 2 },
+          },
+        ])
+      }
       setConnectMenu(null)
       toast.success(`Added "${option.label}"`)
     },
-    [connectMenu],
+    [connectMenu, nodes, edges, pushToHistory],
   )
 
   const handleAddContextualNodeFromNodeMenu = useCallback(
@@ -615,7 +672,7 @@ export function Workspace() {
       if (!nodeMenu) return
       const sourceNode = nodes.find((n) => n.id === nodeMenu.nodeId)
       if (!sourceNode) return
-
+      pushToHistory(nodes, edges)
       const newNode: Node = {
         id: `${option.id}-${Date.now()}`,
         type: option.type,
@@ -625,7 +682,6 @@ export function Workspace() {
         },
         data: { ...option.data },
       }
-
       setNodes((prev) => [...prev, newNode])
       setEdges((prev) => [
         ...prev,
@@ -637,23 +693,26 @@ export function Workspace() {
           style: { stroke: "#6366f1", strokeWidth: 2 },
         },
       ])
-
       setNodeMenu(null)
       toast.success(`Added "${option.label}"`)
     },
-    [nodeMenu, nodes],
+    [nodeMenu, nodes, edges, pushToHistory],
   )
 
   // ── Node operations ────────────────────────────────────────────────────────
-  const handleAddNode = useCallback((component: ComponentItem) => {
-    const newNode: Node = {
-      id: `${component.id}-${Date.now()}`,
-      type: component.type,
-      position: { x: 150 + Math.random() * 300, y: 100 + Math.random() * 200 },
-      data: { ...component.data },
-    }
-    setNodes((prev) => [...prev, newNode])
-  }, [])
+  const handleAddNode = useCallback(
+    (component: ComponentItem) => {
+      pushToHistory(nodes, edges)
+      const newNode: Node = {
+        id: `${component.id}-${Date.now()}`,
+        type: component.type,
+        position: { x: 150 + Math.random() * 300, y: 100 + Math.random() * 200 },
+        data: { ...component.data },
+      }
+      setNodes((prev) => [...prev, newNode])
+    },
+    [nodes, edges, pushToHistory],
+  )
 
   const handleUpdateNodeData = useCallback(
     (field: string, value: string) => {
@@ -669,6 +728,7 @@ export function Workspace() {
 
   const handleDuplicateNode = useCallback(() => {
     if (!selectedNode) return
+    pushToHistory(nodes, edges)
     const dup: Node = {
       id: `${selectedNode.type}-${Date.now()}`,
       type: selectedNode.type,
@@ -677,10 +737,11 @@ export function Workspace() {
     }
     setNodes((prev) => [...prev, dup])
     toast.success("Node duplicated")
-  }, [selectedNode])
+  }, [selectedNode, nodes, edges, pushToHistory])
 
   const handleDeleteNode = useCallback(() => {
     if (!selectedNodeId) return
+    pushToHistory(nodes, edges)
     setEdges((prev) =>
       prev.filter((e) => e.source !== selectedNodeId && e.target !== selectedNodeId),
     )
@@ -688,21 +749,15 @@ export function Workspace() {
     setSelectedNodeId(null)
     setNodeMenu(null)
     toast.success("Node removed")
-  }, [selectedNodeId])
+  }, [selectedNodeId, nodes, edges, pushToHistory])
 
   const handleDeleteEdge = useCallback(() => {
     if (!selectedEdgeId) return
+    pushToHistory(nodes, edges)
     setEdges((prev) => prev.filter((e) => e.id !== selectedEdgeId))
     setSelectedEdgeId(null)
     toast.success("Connection removed")
-  }, [selectedEdgeId])
-
-  const resetCanvas = useCallback(() => {
-    setNodes([])
-    setEdges([])
-    setSelectedNodeId(null)
-    setSelectedEdgeId(null)
-  }, [])
+  }, [selectedEdgeId, nodes, edges, pushToHistory])
 
   // ── Simulation ─────────────────────────────────────────────────────────────
   const getConnectedNodes = useCallback(
@@ -815,28 +870,6 @@ export function Workspace() {
     toast.success("Project saved!")
   }, [deviceName, wifiSsid, wifiPassword, area, nodes, edges, automations, savedProjects])
 
-  const loadProject = useCallback((project: SavedProject) => {
-    setDeviceName(project.deviceName ?? project.name)
-    setWifiSsid(project.wifiSsid ?? "")
-    setWifiPassword(project.wifiPassword ?? "")
-    setArea(project.area ?? "")
-    setNodes(project.nodes)
-    setEdges(project.edges)
-    setAutomations(project.automations ?? [])
-    setLoadDialogOpen(false)
-    toast.success(`Loaded "${project.name}"`)
-  }, [])
-
-  const deleteProject = useCallback(
-    (name: string) => {
-      const updated = savedProjects.filter((p) => p.name !== name)
-      setSavedProjects(updated)
-      localStorage.setItem("workspace-projects", JSON.stringify(updated))
-      toast.success("Project deleted")
-    },
-    [savedProjects],
-  )
-
   // ── Automations ────────────────────────────────────────────────────────────
   const addAutomation = useCallback(() => {
     if (!newAuto.sourceNodeId || !newAuto.trigger || !newAuto.action || !newAuto.targetNodeId) {
@@ -869,6 +902,84 @@ export function Workspace() {
     )
   }, [nodeMenuSearch])
 
+  const filteredCanvasNodes = useMemo(() => {
+    const q = connectMenuSearch.trim().toLowerCase()
+    if (!q) return ALL_COMPONENTS
+    return ALL_COMPONENTS.filter(
+      (n) => n.label.toLowerCase().includes(q) || n.category.toLowerCase().includes(q),
+    )
+  }, [connectMenuSearch])
+
+  const handleUndo = useCallback(() => {
+    const prev = undoStackRef.current.pop()
+    if (!prev) return
+    redoStackRef.current = [...redoStackRef.current, { nodes, edges }]
+    setNodes(prev.nodes)
+    setEdges(prev.edges)
+    setCanUndo(undoStackRef.current.length > 0)
+    setCanRedo(true)
+  }, [nodes, edges])
+
+  const handleRedo = useCallback(() => {
+    const next = redoStackRef.current.pop()
+    if (!next) return
+    undoStackRef.current = [...undoStackRef.current, { nodes, edges }]
+    setNodes(next.nodes)
+    setEdges(next.edges)
+    setCanUndo(true)
+    setCanRedo(redoStackRef.current.length > 0)
+  }, [nodes, edges])
+
+  // ── Right-click on canvas ─────────────────────────────────────────────────
+  const handlePaneContextMenu = useCallback((params: PaneContextMenuParams) => {
+    setConnectMenuSearch("")
+    setNodeMenu(null)
+    setSelectedNodeId(null)
+    setSelectedEdgeId(null)
+    setConnectMenu({ ...params, sourceNodeId: "", menuType: "canvas" })
+  }, [])
+
+  // ── Keyboard shortcuts ────────────────────────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isEditing = ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName)
+      if (e.key === "Escape") {
+        setConnectMenu(null)
+        setConnectMenuSearch("")
+        setNodeMenu(null)
+        setNodeMenuSearch("")
+        setSelectedNodeId(null)
+        setSelectedEdgeId(null)
+      }
+      if ((e.key === "Delete" || e.key === "Backspace") && !isEditing) {
+        if (selectedNodeId) handleDeleteNode()
+        else if (selectedEdgeId) handleDeleteEdge()
+      }
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === "z") {
+        e.preventDefault()
+        handleUndo()
+      }
+      if ((e.metaKey || e.ctrlKey) && (e.key === "y" || (e.shiftKey && e.key === "z"))) {
+        e.preventDefault()
+        handleRedo()
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "d" && !isEditing) {
+        e.preventDefault()
+        if (selectedNodeId) handleDuplicateNode()
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [
+    selectedNodeId,
+    selectedEdgeId,
+    handleDeleteNode,
+    handleDeleteEdge,
+    handleUndo,
+    handleRedo,
+    handleDuplicateNode,
+  ])
+
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex h-[calc(100svh-4rem)] flex-col p-6">
@@ -885,9 +996,23 @@ export function Workspace() {
           />
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={resetCanvas} disabled={isSimulating}>
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Clear
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleUndo}
+            disabled={!canUndo || isSimulating}
+            title="Undo (⌘Z)"
+          >
+            <Undo2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRedo}
+            disabled={!canRedo || isSimulating}
+            title="Redo (⌘⇧Z)"
+          >
+            <Redo2 className="h-4 w-4" />
           </Button>
           {isSimulating ? (
             <Button size="sm" variant="destructive" onClick={stopSimulation}>
@@ -900,52 +1025,6 @@ export function Workspace() {
               Simulate
             </Button>
           )}
-          <Dialog open={loadDialogOpen} onOpenChange={setLoadDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <FolderOpen className="mr-2 h-4 w-4" />
-                Load
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Load Project</DialogTitle>
-                <DialogDescription>Select a saved workspace project to load</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-2 py-4">
-                {savedProjects.length === 0 ? (
-                  <p className="text-center text-sm text-muted-foreground">No saved projects yet</p>
-                ) : (
-                  savedProjects.map((project) => (
-                    <div
-                      key={project.name}
-                      className="flex items-center justify-between rounded-lg border border-border/50 p-3"
-                    >
-                      <div>
-                        <p className="font-medium">{project.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(project.createdAt).toLocaleDateString()} •{" "}
-                          {project.nodes.length} nodes
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => deleteProject(project.name)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-400" />
-                        </Button>
-                        <Button size="sm" onClick={() => loadProject(project)}>
-                          Load
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
           <Button variant="outline" size="sm" onClick={saveProject}>
             <Save className="mr-2 h-4 w-4" />
             Save
@@ -983,6 +1062,7 @@ export function Workspace() {
               onEdgeClick={handleEdgeClick}
               onPaneClick={handlePaneClick}
               onConnectionDropped={handleConnectionDropped}
+              onPaneContextMenu={handlePaneContextMenu}
               showControls
               showMinimap
             />
@@ -1021,7 +1101,7 @@ export function Workspace() {
         </div>
 
         {/* Right panel — scrolls as a whole, no height-chain complexity */}
-        <div className="flex w-84 flex-col gap-3 overflow-y-auto">
+        <div className="flex w-88 flex-col gap-3 overflow-y-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col">
             <TabsList className="w-full shrink-0 justify-between">
               <TabsTrigger value="generic" className="flex-1 gap-1">
@@ -1419,16 +1499,24 @@ export function Workspace() {
       {createPortal(
         <AnimatePresence>
           <>
-            {/* Connect-drag menu */}
+            {/* Connect-drag or right-click canvas menu */}
             {connectMenu && (
               <NodePalette
                 ref={connectMenuRef}
                 x={connectMenu.screenX}
                 y={connectMenu.screenY}
-                title="Add node"
+                title={connectMenu.menuType === "canvas" ? "Add to canvas" : "Add node"}
+                subtitle={
+                  connectMenu.menuType === "canvas" ? "Right-click • no connection" : undefined
+                }
                 search={connectMenuSearch}
                 onSearchChange={setConnectMenuSearch}
-                filtered={filteredConnectNodes}
+                filtered={
+                  connectMenu.menuType === "canvas" ? filteredCanvasNodes : filteredConnectNodes
+                }
+                categories={
+                  connectMenu.menuType === "canvas" ? CANVAS_CATEGORIES : LOGIC_CATEGORIES
+                }
                 onSelect={handleAddContextualNode}
                 onClose={() => {
                   setConnectMenu(null)
@@ -1448,6 +1536,7 @@ export function Workspace() {
                 search={nodeMenuSearch}
                 onSearchChange={setNodeMenuSearch}
                 filtered={filteredNodeMenuNodes}
+                categories={LOGIC_CATEGORIES}
                 onSelect={handleAddContextualNodeFromNodeMenu}
                 onClose={() => {
                   setNodeMenu(null)

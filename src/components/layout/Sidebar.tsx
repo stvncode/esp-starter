@@ -10,7 +10,6 @@ import {
   Wifi,
   Sparkles,
   Lock,
-  Boxes,
   Wrench,
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
@@ -131,22 +130,6 @@ export function Sidebar() {
         >
           <Home className="h-4 w-4" />
           Dashboard
-        </NavLink>
-
-        {/* Sandbox Link */}
-        <NavLink
-          to="/sandbox"
-          className={({ isActive }) =>
-            cn(
-              "mb-2 flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium transition-colors",
-              isActive
-                ? "bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 text-violet-400"
-                : "text-muted-foreground hover:bg-gradient-to-r hover:from-violet-500/10 hover:to-fuchsia-500/10 hover:text-violet-400"
-            )
-          }
-        >
-          <Boxes className="h-4 w-4" />
-          Sandbox
         </NavLink>
 
         {/* Workspace Link */}
