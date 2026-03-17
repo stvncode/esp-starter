@@ -3,453 +3,23 @@ import {
   type ConnectionDroppedParams,
   type PaneContextMenuParams,
 } from "@/components/flow"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { cn } from "@/lib/utils"
+import { Card, CardContent } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AutomationsTab } from "@/components/workspace/AutomationsTab"
+import { buildYaml } from "@/components/workspace/buildYaml"
+import { ALL_COMPONENTS, ALL_LOGIC_NODES } from "@/components/workspace/constants"
+import { ComponentsTab } from "@/components/workspace/ComponentsTab"
+import { DeviceSettingsTab } from "@/components/workspace/DeviceSettingsTab"
+import { PropertiesPanel } from "@/components/workspace/PropertiesPanel"
+import type { Automation, ComponentItem, ConnectMenu, NodeMenu, SavedProject } from "@/components/workspace/types"
+import { useSimulation } from "@/components/workspace/useSimulation"
+import { WorkspaceContextMenus } from "@/components/workspace/WorkspaceContextMenus"
+import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader"
+import { YamlPreviewPanel } from "@/components/workspace/YamlPreviewPanel"
 import type { Edge, EdgeMouseHandler, Node, NodeMouseHandler } from "@xyflow/react"
-import { AnimatePresence, motion } from "framer-motion"
-import {
-  Boxes,
-  Check,
-  CircleDot,
-  Clock,
-  Code2,
-  Copy,
-  Cpu,
-  Download,
-  GitBranch,
-  Lightbulb,
-  MapPin,
-  Play,
-  Plus,
-  Power,
-  Radio,
-  Redo2,
-  Save,
-  Search,
-  Settings,
-  Square,
-  Thermometer,
-  Trash2,
-  Undo2,
-  Wifi,
-  X,
-  Zap,
-} from "lucide-react"
-import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { createPortal } from "react-dom"
+import { Boxes, GitBranch, Settings } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface ComponentItem {
-  id: string
-  type: string
-  label: string
-  icon: React.ElementType
-  color: string
-  bgColor: string
-  category: string
-  data: Record<string, unknown>
-}
-
-interface Automation {
-  id: string
-  sourceNodeId: string
-  trigger: string
-  action: string
-  targetNodeId: string
-}
-
-interface SavedProject {
-  name: string
-  deviceName: string
-  wifiSsid: string
-  wifiPassword: string
-  area: string
-  nodes: Node[]
-  edges: Edge[]
-  automations: Automation[]
-  createdAt: string
-}
-
-interface ConnectMenu {
-  screenX: number
-  screenY: number
-  flowX: number
-  flowY: number
-  sourceNodeId: string
-  menuType: "connect" | "canvas"
-}
-
-// ─── Hardware components (what lives in the Components panel) ─────────────────
-
-const hardwareComponents: ComponentItem[] = [
-  {
-    id: "button",
-    type: "button",
-    label: "Button",
-    icon: CircleDot,
-    color: "text-blue-400",
-    bgColor: "bg-blue-500/20",
-    category: "Input",
-    data: { label: "Button", pin: "GPIO4" },
-  },
-  {
-    id: "motion",
-    type: "button",
-    label: "Motion Sensor",
-    icon: Radio,
-    color: "text-purple-400",
-    bgColor: "bg-purple-500/20",
-    category: "Input",
-    data: { label: "Motion", pin: "GPIO14" },
-  },
-  {
-    id: "temp",
-    type: "button",
-    label: "Temp Sensor",
-    icon: Thermometer,
-    color: "text-cyan-400",
-    bgColor: "bg-cyan-500/20",
-    category: "Input",
-    data: { label: "Temperature", pin: "GPIO27" },
-  },
-  {
-    id: "light",
-    type: "light",
-    label: "Light",
-    icon: Lightbulb,
-    color: "text-amber-400",
-    bgColor: "bg-amber-500/20",
-    category: "Output",
-    data: { label: "Light", pin: "GPIO5", isOn: false },
-  },
-  {
-    id: "led",
-    type: "light",
-    label: "Status LED",
-    icon: Lightbulb,
-    color: "text-green-400",
-    bgColor: "bg-green-500/20",
-    category: "Output",
-    data: { label: "Status LED", pin: "GPIO2", isOn: false },
-  },
-]
-
-// ─── Full logic-node catalog used in both context menus ──────────────────────
-
-const ALL_LOGIC_NODES: ComponentItem[] = [
-  // Triggers
-  {
-    id: "when_pressed",
-    type: "trigger",
-    label: "When Pressed",
-    icon: Zap,
-    color: "text-cyan-400",
-    bgColor: "bg-cyan-500/20",
-    category: "Trigger",
-    data: { label: "When Pressed", triggerType: "on_press" },
-  },
-  {
-    id: "when_released",
-    type: "trigger",
-    label: "When Released",
-    icon: Zap,
-    color: "text-cyan-400",
-    bgColor: "bg-cyan-500/20",
-    category: "Trigger",
-    data: { label: "When Released", triggerType: "on_release" },
-  },
-  {
-    id: "when_on",
-    type: "trigger",
-    label: "When On",
-    icon: Zap,
-    color: "text-green-400",
-    bgColor: "bg-green-500/20",
-    category: "Trigger",
-    data: { label: "When On", triggerType: "on_turn_on" },
-  },
-  {
-    id: "when_off",
-    type: "trigger",
-    label: "When Off",
-    icon: Zap,
-    color: "text-red-400",
-    bgColor: "bg-red-500/20",
-    category: "Trigger",
-    data: { label: "When Off", triggerType: "on_turn_off" },
-  },
-  // Actions
-  {
-    id: "turn_on",
-    type: "action",
-    label: "Turn On",
-    icon: Power,
-    color: "text-green-400",
-    bgColor: "bg-green-500/20",
-    category: "Action",
-    data: { label: "Turn On", actionType: "turn_on" },
-  },
-  {
-    id: "turn_off",
-    type: "action",
-    label: "Turn Off",
-    icon: Power,
-    color: "text-red-400",
-    bgColor: "bg-red-500/20",
-    category: "Action",
-    data: { label: "Turn Off", actionType: "turn_off" },
-  },
-  {
-    id: "toggle",
-    type: "action",
-    label: "Toggle",
-    icon: Power,
-    color: "text-amber-400",
-    bgColor: "bg-amber-500/20",
-    category: "Action",
-    data: { label: "Toggle", actionType: "toggle" },
-  },
-  // Timing
-  {
-    id: "delay_500ms",
-    type: "delay",
-    label: "Wait 500ms",
-    icon: Clock,
-    color: "text-orange-400",
-    bgColor: "bg-orange-500/20",
-    category: "Timing",
-    data: { label: "Wait", duration: "500ms" },
-  },
-  {
-    id: "delay_1s",
-    type: "delay",
-    label: "Wait 1s",
-    icon: Clock,
-    color: "text-orange-400",
-    bgColor: "bg-orange-500/20",
-    category: "Timing",
-    data: { label: "Wait", duration: "1s" },
-  },
-  {
-    id: "delay_5s",
-    type: "delay",
-    label: "Wait 5s",
-    icon: Clock,
-    color: "text-orange-400",
-    bgColor: "bg-orange-500/20",
-    category: "Timing",
-    data: { label: "Wait", duration: "5s" },
-  },
-  {
-    id: "delay_10s",
-    type: "delay",
-    label: "Wait 10s",
-    icon: Clock,
-    color: "text-orange-400",
-    bgColor: "bg-orange-500/20",
-    category: "Timing",
-    data: { label: "Wait", duration: "10s" },
-  },
-  {
-    id: "delay_30s",
-    type: "delay",
-    label: "Wait 30s",
-    icon: Clock,
-    color: "text-orange-400",
-    bgColor: "bg-orange-500/20",
-    category: "Timing",
-    data: { label: "Wait", duration: "30s" },
-  },
-  {
-    id: "delay_1min",
-    type: "delay",
-    label: "Wait 1 min",
-    icon: Clock,
-    color: "text-orange-400",
-    bgColor: "bg-orange-500/20",
-    category: "Timing",
-    data: { label: "Wait", duration: "60s" },
-  },
-  // Outputs
-  {
-    id: "light_node",
-    type: "light",
-    label: "Light",
-    icon: Lightbulb,
-    color: "text-amber-400",
-    bgColor: "bg-amber-500/20",
-    category: "Output",
-    data: { label: "Light", pin: "GPIO5", isOn: false },
-  },
-  {
-    id: "led_node",
-    type: "light",
-    label: "Status LED",
-    icon: Lightbulb,
-    color: "text-green-400",
-    bgColor: "bg-green-500/20",
-    category: "Output",
-    data: { label: "Status LED", pin: "GPIO2", isOn: false },
-  },
-]
-
-const LOGIC_CATEGORIES = ["Trigger", "Action", "Timing", "Output"] as const
-const CANVAS_CATEGORIES = ["Input", "Trigger", "Action", "Timing", "Output"] as const
-const ALL_COMPONENTS: ComponentItem[] = [...hardwareComponents, ...ALL_LOGIC_NODES]
-
-const TRIGGER_OPTIONS = [
-  { value: "on_press", label: "When Pressed" },
-  { value: "on_release", label: "When Released" },
-  { value: "on_turn_on", label: "When On" },
-  { value: "on_turn_off", label: "When Off" },
-]
-
-const ACTION_OPTIONS = [
-  { value: "turn_on", label: "Turn On" },
-  { value: "turn_off", label: "Turn Off" },
-  { value: "toggle", label: "Toggle" },
-]
-
-interface NodeMenu {
-  screenX: number
-  screenY: number
-  nodeId: string
-}
-
-// ─── NodePalette ──────────────────────────────────────────────────────────────
-
-interface NodePaletteProps {
-  x: number
-  y: number
-  title: string
-  subtitle?: string
-  search: string
-  onSearchChange: (v: string) => void
-  filtered: ComponentItem[]
-  categories: readonly string[]
-  onSelect: (item: ComponentItem) => void
-  onClose: () => void
-  footer?: React.ReactNode
-}
-
-const NodePalette = forwardRef<HTMLDivElement, NodePaletteProps>(function NodePalette(
-  {
-    x,
-    y,
-    title,
-    subtitle,
-    search,
-    onSearchChange,
-    filtered,
-    categories,
-    onSelect,
-    onClose,
-    footer,
-  },
-  ref,
-) {
-  // Clamp to viewport so palette never goes off-screen
-  const top = Math.max(8, Math.min(y, window.innerHeight - 480))
-  const left = Math.max(8, Math.min(x, window.innerWidth - 240))
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.12 }}
-      style={{ top, left }}
-      className="fixed z-[9999] w-56 overflow-hidden rounded-xl border border-border/60 bg-popover shadow-xl"
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border/40 px-3 py-2">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold">{title}</p>
-          {subtitle && <p className="truncate text-[10px] text-muted-foreground">{subtitle}</p>}
-        </div>
-        <button
-          onClick={onClose}
-          className="ml-2 shrink-0 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      {/* Search */}
-      <div className="border-b border-border/40 px-2 py-1.5">
-        <div className="flex items-center gap-1.5 rounded-md border border-border/50 bg-muted/30 px-2 py-1">
-          <Search className="h-3 w-3 shrink-0 text-muted-foreground" />
-          <input
-            autoFocus
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search…"
-            className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
-          />
-        </div>
-      </div>
-
-      {/* Items grouped by category */}
-      <ScrollArea className="max-h-[130px] overflow-y-auto">
-        <div className="p-1.5">
-          {filtered.length === 0 ? (
-            <p className="py-4 text-center text-xs text-muted-foreground">No results</p>
-          ) : (
-            categories.map((cat) => {
-              const items = filtered.filter((n) => n.category === cat)
-              if (items.length === 0) return null
-              return (
-                <div key={cat} className="mb-1 last:mb-0">
-                  <p className="mb-0.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {cat}
-                  </p>
-                  {items.map((item) => {
-                    const Icon = item.icon
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => onSelect(item)}
-                        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent"
-                      >
-                        <div
-                          className={cn(
-                            "flex h-5 w-5 shrink-0 items-center justify-center rounded",
-                            item.bgColor,
-                          )}
-                        >
-                          <Icon className={cn("h-3 w-3", item.color)} />
-                        </div>
-                        <span>{item.label}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              )
-            })
-          )}
-        </div>
-      </ScrollArea>
-
-      {footer}
-    </motion.div>
-  )
-})
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export function Workspace() {
   const [nodes, setNodes] = useState<Node[]>([])
@@ -459,7 +29,6 @@ export function Workspace() {
   const [wifiPassword, setWifiPassword] = useState("")
   const [area, setArea] = useState("")
   const [automations, setAutomations] = useState<Automation[]>([])
-
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>(() => {
     try {
       const saved = localStorage.getItem("workspace-projects")
@@ -469,7 +38,6 @@ export function Workspace() {
     }
   })
   const [copied, setCopied] = useState(false)
-  const [isSimulating, setIsSimulating] = useState(false)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("generic")
@@ -477,23 +45,15 @@ export function Workspace() {
   const [connectMenu, setConnectMenu] = useState<ConnectMenu | null>(null)
   const connectMenuRef = useRef<HTMLDivElement>(null)
   const [connectMenuSearch, setConnectMenuSearch] = useState("")
-
   const [nodeMenu, setNodeMenu] = useState<NodeMenu | null>(null)
   const nodeMenuRef = useRef<HTMLDivElement>(null)
   const [nodeMenuSearch, setNodeMenuSearch] = useState("")
-
-  // Undo / Redo history
   const undoStackRef = useRef<{ nodes: Node[]; edges: Edge[] }[]>([])
   const redoStackRef = useRef<{ nodes: Node[]; edges: Edge[] }[]>([])
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
 
-  const [newAuto, setNewAuto] = useState({
-    sourceNodeId: "",
-    trigger: "",
-    action: "",
-    targetNodeId: "",
-  })
+  const { isSimulating, runSimulation, stopSimulation } = useSimulation(nodes, setNodes, edges)
 
   const selectedNode = useMemo(
     () => nodes.find((n) => n.id === selectedNodeId) ?? null,
@@ -505,7 +65,36 @@ export function Workspace() {
   )
   const outputNodes = useMemo(() => nodes.filter((n) => n.type === "light"), [nodes])
 
-  // Close connect menu on outside click
+  const yaml = useMemo(
+    () => buildYaml(nodes, deviceName, area, wifiSsid, wifiPassword, automations),
+    [nodes, deviceName, area, wifiSsid, wifiPassword, automations],
+  )
+
+  const filteredConnectNodes = useMemo(() => {
+    const q = connectMenuSearch.trim().toLowerCase()
+    if (!q) return ALL_LOGIC_NODES
+    return ALL_LOGIC_NODES.filter(
+      (n) => n.label.toLowerCase().includes(q) || n.category.toLowerCase().includes(q),
+    )
+  }, [connectMenuSearch])
+
+  const filteredNodeMenuNodes = useMemo(() => {
+    const q = nodeMenuSearch.trim().toLowerCase()
+    if (!q) return ALL_LOGIC_NODES
+    return ALL_LOGIC_NODES.filter(
+      (n) => n.label.toLowerCase().includes(q) || n.category.toLowerCase().includes(q),
+    )
+  }, [nodeMenuSearch])
+
+  const filteredCanvasNodes = useMemo(() => {
+    const q = connectMenuSearch.trim().toLowerCase()
+    if (!q) return ALL_COMPONENTS
+    return ALL_COMPONENTS.filter(
+      (n) => n.label.toLowerCase().includes(q) || n.category.toLowerCase().includes(q),
+    )
+  }, [connectMenuSearch])
+
+  // ── Outside-click dismissal ─────────────────────────────────────────────────
   useEffect(() => {
     if (!connectMenu) return
     const handleClick = (e: MouseEvent) => {
@@ -517,7 +106,6 @@ export function Workspace() {
     return () => document.removeEventListener("mousedown", handleClick)
   }, [connectMenu])
 
-  // Close node menu on outside click
   useEffect(() => {
     if (!nodeMenu) return
     const handleClick = (e: MouseEvent) => {
@@ -529,10 +117,9 @@ export function Workspace() {
     return () => document.removeEventListener("mousedown", handleClick)
   }, [nodeMenu])
 
-  // Open node menu when a node's handle "dot" is clicked
+  // ── Node handle click → open node menu ────────────────────────────────────
   useEffect(() => {
     type HandleClickDetail = { nodeId: string; clientX: number; clientY: number }
-
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<HandleClickDetail>).detail
       if (!detail) return
@@ -541,59 +128,41 @@ export function Workspace() {
       setConnectMenu(null)
       setConnectMenuSearch("")
       setNodeMenuSearch("")
-      setNodeMenu({
-        screenX: detail.clientX,
-        screenY: detail.clientY,
-        nodeId: detail.nodeId,
-      })
+      setNodeMenu({ screenX: detail.clientX, screenY: detail.clientY, nodeId: detail.nodeId })
     }
     window.addEventListener("esp-node-handle-click", handler as EventListener)
     return () => window.removeEventListener("esp-node-handle-click", handler as EventListener)
   }, [])
 
-  // ── YAML ──────────────────────────────────────────────────────────────────
-  const yaml = useMemo(() => {
-    const buttons = nodes.filter((n) => n.type === "button")
-    const lights = nodes.filter((n) => n.type === "light")
-    let out = `esphome:\n  name: ${(deviceName || "my-device").toLowerCase().replace(/\s+/g, "-")}\n`
-    if (area) out += `  area: "${area}"\n`
-    out += `\nesp32:\n  board: esp32dev\n\nwifi:\n  ssid: "${wifiSsid || "YourNetwork"}"\n  password: "${wifiPassword || "YourPassword"}"\n\napi:\n\nlogger:\n\n`
-    if (buttons.length > 0) {
-      out += `binary_sensor:\n`
-      buttons.forEach((btn) => {
-        out += `  - platform: gpio\n    pin: ${btn.data.pin}\n    name: "${btn.data.label}"\n`
-      })
-      out += "\n"
-    }
-    if (lights.length > 0) {
-      out += `light:\n`
-      lights.forEach((light, i) => {
-        out += `  - platform: binary\n    name: "${light.data.label}"\n    id: light_${i}\n    output: output_${i}\n`
-      })
-      out += "\n"
-      out += `output:\n`
-      lights.forEach((light, i) => {
-        out += `  - platform: gpio\n    pin: ${light.data.pin}\n    id: output_${i}\n`
-      })
-      out += "\n"
-    }
-    if (automations.length > 0) {
-      out += `automation:\n`
-      automations.forEach((auto) => {
-        const srcNode = nodes.find((n) => n.id === auto.sourceNodeId)
-        const tgtNode = nodes.find((n) => n.id === auto.targetNodeId)
-        out += `  - alias: "${srcNode ? srcNode.data.label : "?"} → ${auto.action} ${tgtNode ? tgtNode.data.label : "?"}"\n`
-        out += `    trigger:\n      - platform: ${auto.trigger}\n`
-        out += `    action:\n      - service: light.${auto.action}\n        target:\n          entity_id: light_${lights.findIndex((l) => l.id === auto.targetNodeId)}\n`
-      })
-    }
-    return out
-  }, [nodes, deviceName, area, wifiSsid, wifiPassword, automations])
+  // ── Undo / Redo ────────────────────────────────────────────────────────────
+  const pushToHistory = useCallback((prevNodes: Node[], prevEdges: Edge[]) => {
+    undoStackRef.current = [...undoStackRef.current.slice(-49), { nodes: prevNodes, edges: prevEdges }]
+    redoStackRef.current = []
+    setCanUndo(true)
+    setCanRedo(false)
+  }, [])
+
+  const handleUndo = useCallback(() => {
+    const prev = undoStackRef.current.pop()
+    if (!prev) return
+    redoStackRef.current = [...redoStackRef.current, { nodes, edges }]
+    setNodes(prev.nodes)
+    setEdges(prev.edges)
+    setCanUndo(undoStackRef.current.length > 0)
+    setCanRedo(true)
+  }, [nodes, edges])
+
+  const handleRedo = useCallback(() => {
+    const next = redoStackRef.current.pop()
+    if (!next) return
+    undoStackRef.current = [...undoStackRef.current, { nodes, edges }]
+    setNodes(next.nodes)
+    setEdges(next.edges)
+    setCanUndo(true)
+    setCanRedo(redoStackRef.current.length > 0)
+  }, [nodes, edges])
 
   // ── Canvas handlers ────────────────────────────────────────────────────────
-  // We no longer open the palette on full-node click — that is now triggered
-  // from clicking the handle "dot" on each node. Node clicks just handle
-  // selection state.
   const handleNodeClick = useCallback<NodeMouseHandler>((_event, node) => {
     setSelectedNodeId(node.id)
     setSelectedEdgeId(null)
@@ -617,26 +186,37 @@ export function Workspace() {
     setNodeMenuSearch("")
   }, [])
 
-  // ── Connection dropped → show context menu ────────────────────────────────
   const handleConnectionDropped = useCallback(
     (params: ConnectionDroppedParams) => {
-      const sourceNode = nodes.find((n) => n.id === params.sourceNodeId)
-      if (!sourceNode) return
+      if (!nodes.find((n) => n.id === params.sourceNodeId)) return
       setConnectMenuSearch("")
       setConnectMenu({ ...params, menuType: "connect" })
     },
     [nodes],
   )
 
-  const pushToHistory = useCallback((prevNodes: Node[], prevEdges: Edge[]) => {
-    undoStackRef.current = [
-      ...undoStackRef.current.slice(-49),
-      { nodes: prevNodes, edges: prevEdges },
-    ]
-    redoStackRef.current = []
-    setCanUndo(true)
-    setCanRedo(false)
+  const handlePaneContextMenu = useCallback((params: PaneContextMenuParams) => {
+    setConnectMenuSearch("")
+    setNodeMenu(null)
+    setSelectedNodeId(null)
+    setSelectedEdgeId(null)
+    setConnectMenu({ ...params, sourceNodeId: "", menuType: "canvas" })
   }, [])
+
+  // ── Node operations ────────────────────────────────────────────────────────
+  const handleAddNode = useCallback(
+    (component: ComponentItem) => {
+      pushToHistory(nodes, edges)
+      const newNode: Node = {
+        id: `${component.id}-${Date.now()}`,
+        type: component.type,
+        position: { x: 150 + Math.random() * 300, y: 100 + Math.random() * 200 },
+        data: { ...component.data },
+      }
+      setNodes((prev) => [...prev, newNode])
+    },
+    [nodes, edges, pushToHistory],
+  )
 
   const handleAddContextualNode = useCallback(
     (option: ComponentItem) => {
@@ -676,10 +256,7 @@ export function Workspace() {
       const newNode: Node = {
         id: `${option.id}-${Date.now()}`,
         type: option.type,
-        position: {
-          x: sourceNode.position.x + 180,
-          y: sourceNode.position.y,
-        },
+        position: { x: sourceNode.position.x + 180, y: sourceNode.position.y },
         data: { ...option.data },
       }
       setNodes((prev) => [...prev, newNode])
@@ -697,21 +274,6 @@ export function Workspace() {
       toast.success(`Added "${option.label}"`)
     },
     [nodeMenu, nodes, edges, pushToHistory],
-  )
-
-  // ── Node operations ────────────────────────────────────────────────────────
-  const handleAddNode = useCallback(
-    (component: ComponentItem) => {
-      pushToHistory(nodes, edges)
-      const newNode: Node = {
-        id: `${component.id}-${Date.now()}`,
-        type: component.type,
-        position: { x: 150 + Math.random() * 300, y: 100 + Math.random() * 200 },
-        data: { ...component.data },
-      }
-      setNodes((prev) => [...prev, newNode])
-    },
-    [nodes, edges, pushToHistory],
   )
 
   const handleUpdateNodeData = useCallback(
@@ -742,9 +304,7 @@ export function Workspace() {
   const handleDeleteNode = useCallback(() => {
     if (!selectedNodeId) return
     pushToHistory(nodes, edges)
-    setEdges((prev) =>
-      prev.filter((e) => e.source !== selectedNodeId && e.target !== selectedNodeId),
-    )
+    setEdges((prev) => prev.filter((e) => e.source !== selectedNodeId && e.target !== selectedNodeId))
     setNodes((prev) => prev.filter((n) => n.id !== selectedNodeId))
     setSelectedNodeId(null)
     setNodeMenu(null)
@@ -759,80 +319,7 @@ export function Workspace() {
     toast.success("Connection removed")
   }, [selectedEdgeId, nodes, edges, pushToHistory])
 
-  // ── Simulation ─────────────────────────────────────────────────────────────
-  const getConnectedNodes = useCallback(
-    (sourceId: string) => edges.filter((e) => e.source === sourceId).map((e) => e.target),
-    [edges],
-  )
-
-  const runSimulation = useCallback(() => {
-    if (nodes.length === 0) {
-      toast.error("Add some nodes first!")
-      return
-    }
-    const inputNodes = nodes.filter((n) => n.type === "button")
-    if (inputNodes.length === 0) {
-      toast.error("Add an input node to start simulation")
-      return
-    }
-    setIsSimulating(true)
-    const visited = new Set<string>()
-    const queue: { nodeId: string; delay: number }[] = []
-    inputNodes.forEach((node) => queue.push({ nodeId: node.id, delay: 0 }))
-    let currentDelay = 0
-    const processQueue = () => {
-      const toProcess = [...queue]
-      queue.length = 0
-      toProcess.forEach(({ nodeId, delay }) => {
-        if (visited.has(nodeId)) return
-        visited.add(nodeId)
-        const node = nodes.find((n) => n.id === nodeId)
-        if (!node) return
-        setTimeout(() => {
-          setNodes((prev) =>
-            prev.map((n) => {
-              if (n.id !== nodeId) return n
-              if (n.type === "button") return { ...n, data: { ...n.data, isActive: true } }
-              if (n.type === "light") return { ...n, data: { ...n.data, isOn: true } }
-              return { ...n, data: { ...n.data, isActive: true } }
-            }),
-          )
-          const connected = getConnectedNodes(nodeId)
-          connected.forEach((id) => {
-            if (!visited.has(id)) queue.push({ nodeId: id, delay: 0 })
-          })
-          if (queue.length > 0) processQueue()
-        }, delay + currentDelay)
-        currentDelay += 500
-      })
-    }
-    processQueue()
-    setTimeout(
-      () => {
-        setIsSimulating(false)
-        setNodes((prev) =>
-          prev.map((n) => ({
-            ...n,
-            data: { ...n.data, isActive: false, isOn: n.type === "light" ? false : undefined },
-          })),
-        )
-        toast.success("Simulation complete!")
-      },
-      nodes.length * 600 + 1000,
-    )
-  }, [nodes, getConnectedNodes])
-
-  const stopSimulation = useCallback(() => {
-    setIsSimulating(false)
-    setNodes((prev) =>
-      prev.map((n) => ({
-        ...n,
-        data: { ...n.data, isActive: false, isOn: n.type === "light" ? false : undefined },
-      })),
-    )
-  }, [])
-
-  // ── YAML export ────────────────────────────────────────────────────────────
+  // ── YAML export / save ─────────────────────────────────────────────────────
   const copyYaml = useCallback(() => {
     navigator.clipboard.writeText(yaml)
     setCopied(true)
@@ -851,17 +338,9 @@ export function Workspace() {
     toast.success("YAML downloaded!")
   }, [yaml, deviceName])
 
-  // ── Save / Load ────────────────────────────────────────────────────────────
   const saveProject = useCallback(() => {
     const project: SavedProject = {
-      name: deviceName,
-      deviceName,
-      wifiSsid,
-      wifiPassword,
-      area,
-      nodes,
-      edges,
-      automations,
+      name: deviceName, deviceName, wifiSsid, wifiPassword, area, nodes, edges, automations,
       createdAt: new Date().toISOString(),
     }
     const updated = [...savedProjects.filter((p) => p.name !== deviceName), project]
@@ -870,185 +349,58 @@ export function Workspace() {
     toast.success("Project saved!")
   }, [deviceName, wifiSsid, wifiPassword, area, nodes, edges, automations, savedProjects])
 
-  // ── Automations ────────────────────────────────────────────────────────────
-  const addAutomation = useCallback(() => {
-    if (!newAuto.sourceNodeId || !newAuto.trigger || !newAuto.action || !newAuto.targetNodeId) {
-      toast.error("Fill in all automation fields")
-      return
-    }
-    setAutomations((prev) => [...prev, { ...newAuto, id: `auto-${Date.now()}` }])
-    setNewAuto({ sourceNodeId: "", trigger: "", action: "", targetNodeId: "" })
+  const addAutomation = useCallback((data: Omit<Automation, "id">) => {
+    setAutomations((prev) => [...prev, { ...data, id: `auto-${Date.now()}` }])
     toast.success("Automation added")
-  }, [newAuto])
-
-  const removeAutomation = useCallback((id: string) => {
-    setAutomations((prev) => prev.filter((a) => a.id !== id))
   }, [])
 
-  // ── Filtered logic nodes for both menus ───────────────────────────────────
-  const filteredConnectNodes = useMemo(() => {
-    const q = connectMenuSearch.trim().toLowerCase()
-    if (!q) return ALL_LOGIC_NODES
-    return ALL_LOGIC_NODES.filter(
-      (n) => n.label.toLowerCase().includes(q) || n.category.toLowerCase().includes(q),
-    )
-  }, [connectMenuSearch])
+  const removeAutomation = useCallback(
+    (id: string) => setAutomations((prev) => prev.filter((a) => a.id !== id)),
+    [],
+  )
 
-  const filteredNodeMenuNodes = useMemo(() => {
-    const q = nodeMenuSearch.trim().toLowerCase()
-    if (!q) return ALL_LOGIC_NODES
-    return ALL_LOGIC_NODES.filter(
-      (n) => n.label.toLowerCase().includes(q) || n.category.toLowerCase().includes(q),
-    )
-  }, [nodeMenuSearch])
-
-  const filteredCanvasNodes = useMemo(() => {
-    const q = connectMenuSearch.trim().toLowerCase()
-    if (!q) return ALL_COMPONENTS
-    return ALL_COMPONENTS.filter(
-      (n) => n.label.toLowerCase().includes(q) || n.category.toLowerCase().includes(q),
-    )
-  }, [connectMenuSearch])
-
-  const handleUndo = useCallback(() => {
-    const prev = undoStackRef.current.pop()
-    if (!prev) return
-    redoStackRef.current = [...redoStackRef.current, { nodes, edges }]
-    setNodes(prev.nodes)
-    setEdges(prev.edges)
-    setCanUndo(undoStackRef.current.length > 0)
-    setCanRedo(true)
-  }, [nodes, edges])
-
-  const handleRedo = useCallback(() => {
-    const next = redoStackRef.current.pop()
-    if (!next) return
-    undoStackRef.current = [...undoStackRef.current, { nodes, edges }]
-    setNodes(next.nodes)
-    setEdges(next.edges)
-    setCanUndo(true)
-    setCanRedo(redoStackRef.current.length > 0)
-  }, [nodes, edges])
-
-  // ── Right-click on canvas ─────────────────────────────────────────────────
-  const handlePaneContextMenu = useCallback((params: PaneContextMenuParams) => {
-    setConnectMenuSearch("")
-    setNodeMenu(null)
-    setSelectedNodeId(null)
-    setSelectedEdgeId(null)
-    setConnectMenu({ ...params, sourceNodeId: "", menuType: "canvas" })
-  }, [])
-
-  // ── Keyboard shortcuts ────────────────────────────────────────────────────
+  // ── Keyboard shortcuts ─────────────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isEditing = ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName)
       if (e.key === "Escape") {
-        setConnectMenu(null)
-        setConnectMenuSearch("")
-        setNodeMenu(null)
-        setNodeMenuSearch("")
-        setSelectedNodeId(null)
-        setSelectedEdgeId(null)
+        setConnectMenu(null); setConnectMenuSearch(""); setNodeMenu(null)
+        setNodeMenuSearch(""); setSelectedNodeId(null); setSelectedEdgeId(null)
       }
       if ((e.key === "Delete" || e.key === "Backspace") && !isEditing) {
         if (selectedNodeId) handleDeleteNode()
         else if (selectedEdgeId) handleDeleteEdge()
       }
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === "z") {
-        e.preventDefault()
-        handleUndo()
-      }
-      if ((e.metaKey || e.ctrlKey) && (e.key === "y" || (e.shiftKey && e.key === "z"))) {
-        e.preventDefault()
-        handleRedo()
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === "d" && !isEditing) {
-        e.preventDefault()
-        if (selectedNodeId) handleDuplicateNode()
-      }
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === "z") { e.preventDefault(); handleUndo() }
+      if ((e.metaKey || e.ctrlKey) && (e.key === "y" || (e.shiftKey && e.key === "z"))) { e.preventDefault(); handleRedo() }
+      if ((e.metaKey || e.ctrlKey) && e.key === "d" && !isEditing) { e.preventDefault(); if (selectedNodeId) handleDuplicateNode() }
     }
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [
-    selectedNodeId,
-    selectedEdgeId,
-    handleDeleteNode,
-    handleDeleteEdge,
-    handleUndo,
-    handleRedo,
-    handleDuplicateNode,
-  ])
+  }, [selectedNodeId, selectedEdgeId, handleDeleteNode, handleDeleteEdge, handleUndo, handleRedo, handleDuplicateNode])
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex h-[calc(100svh-4rem)] flex-col p-6">
-      {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Badge className="shrink-0 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400">
-            Workspace
-          </Badge>
-          <Input
-            value={deviceName}
-            onChange={(e) => setDeviceName(e.target.value)}
-            className="h-8 w-48 border-none bg-transparent p-0 text-xl font-bold focus-visible:ring-0"
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleUndo}
-            disabled={!canUndo || isSimulating}
-            title="Undo (⌘Z)"
-          >
-            <Undo2 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRedo}
-            disabled={!canRedo || isSimulating}
-            title="Redo (⌘⇧Z)"
-          >
-            <Redo2 className="h-4 w-4" />
-          </Button>
-          {isSimulating ? (
-            <Button size="sm" variant="destructive" onClick={stopSimulation}>
-              <Square className="mr-2 h-4 w-4" />
-              Stop
-            </Button>
-          ) : (
-            <Button size="sm" onClick={runSimulation} disabled={nodes.length === 0}>
-              <Play className="mr-2 h-4 w-4" />
-              Simulate
-            </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={saveProject}>
-            <Save className="mr-2 h-4 w-4" />
-            Save
-          </Button>
-          <Button size="sm" onClick={copyYaml}>
-            {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
-            Copy YAML
-          </Button>
-          <Button size="sm" variant="secondary" onClick={downloadYaml}>
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
-          <Button
-            size="sm"
-            variant={showYaml ? "default" : "outline"}
-            onClick={() => setShowYaml((v) => !v)}
-          >
-            <Code2 className="mr-2 h-4 w-4" />
-            YAML
-          </Button>
-        </div>
-      </div>
+      <WorkspaceHeader
+        deviceName={deviceName}
+        onDeviceNameChange={setDeviceName}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        isSimulating={isSimulating}
+        nodesEmpty={nodes.length === 0}
+        copied={copied}
+        showYaml={showYaml}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onSimulate={runSimulation}
+        onStopSimulation={stopSimulation}
+        onSave={saveProject}
+        onCopyYaml={copyYaml}
+        onDownloadYaml={downloadYaml}
+        onToggleYaml={() => setShowYaml((v) => !v)}
+      />
 
-      {/* Main area */}
       <div className="flex min-h-0 flex-1 gap-6 overflow-hidden">
         {/* Canvas column */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden">
@@ -1067,40 +419,10 @@ export function Workspace() {
               showMinimap
             />
           </div>
-
-          {/* YAML preview */}
-          <AnimatePresence>
-            {showYaml && (
-              <motion.div
-                key="yaml-panel"
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 224, opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="shrink-0 overflow-hidden rounded-xl border border-border/50"
-              >
-                <div className="flex h-full flex-col bg-gray-950">
-                  <div className="flex shrink-0 items-center justify-between border-b border-border/30 px-3 py-1.5">
-                    <span className="text-xs font-medium text-green-400">YAML Preview</span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 w-6 p-0"
-                      onClick={() => setShowYaml(false)}
-                    >
-                      <X className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
-                  </div>
-                  <pre className="flex-1 overflow-auto p-3 font-mono text-xs leading-relaxed text-green-400">
-                    {yaml}
-                  </pre>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <YamlPreviewPanel show={showYaml} yaml={yaml} onClose={() => setShowYaml(false)} />
         </div>
 
-        {/* Right panel — scrolls as a whole, no height-chain complexity */}
+        {/* Right panel */}
         <div className="flex w-88 flex-col gap-3 overflow-y-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col">
             <TabsList className="w-full shrink-0 justify-between">
@@ -1117,365 +439,36 @@ export function Workspace() {
                 Automations
               </TabsTrigger>
             </TabsList>
-
-            {/* Generic tab */}
-            <TabsContent value="generic">
-              <Card className="border-border/50 bg-card/50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Device Settings</CardTitle>
-                  <CardDescription className="text-xs">Basic ESPHome configuration</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-1.5">
-                    <p className="flex items-center gap-1.5 text-xs font-medium">
-                      <Cpu className="h-3.5 w-3.5 text-muted-foreground" />
-                      Device Name
-                    </p>
-                    <Input
-                      value={deviceName}
-                      onChange={(e) => setDeviceName(e.target.value)}
-                      placeholder="my-device"
-                      className="h-8 text-sm"
-                    />
-                    <p className="text-[11px] text-muted-foreground">
-                      Used as the ESPHome hostname
-                    </p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="flex items-center gap-1.5 text-xs font-medium">
-                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                      Area
-                    </p>
-                    <Input
-                      value={area}
-                      onChange={(e) => setArea(e.target.value)}
-                      placeholder="Living Room"
-                      className="h-8 text-sm"
-                    />
-                    <p className="text-[11px] text-muted-foreground">Shown in Home Assistant</p>
-                  </div>
-                  <div className="space-y-3 rounded-lg border border-border/50 p-3">
-                    <div className="flex items-center gap-1.5 text-xs font-medium">
-                      <Wifi className="h-3.5 w-3.5 text-muted-foreground" />
-                      Wi-Fi
-                    </div>
-                    <div className="space-y-1.5">
-                      <p className="text-xs font-medium text-muted-foreground">SSID</p>
-                      <Input
-                        value={wifiSsid}
-                        onChange={(e) => setWifiSsid(e.target.value)}
-                        placeholder="Network name"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <p className="text-xs font-medium text-muted-foreground">Password</p>
-                      <Input
-                        type="password"
-                        value={wifiPassword}
-                        onChange={(e) => setWifiPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Components tab — only hardware nodes */}
-            <TabsContent value="components">
-              <Card className="border-border/50 bg-card/50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Components</CardTitle>
-                  <CardDescription className="text-xs">
-                    Hardware nodes — click to add. Drag a handle to chain logic.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {["Input", "Output"].map((category) => (
-                    <div key={category}>
-                      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        {category}
-                      </p>
-                      <div className="space-y-1.5">
-                        {hardwareComponents
-                          .filter((c) => c.category === category)
-                          .map((comp) => {
-                            const Icon = comp.icon
-                            return (
-                              <motion.button
-                                key={comp.id}
-                                onClick={() => handleAddNode(comp)}
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                className="flex w-full items-center gap-2 rounded-lg border border-border/50 bg-muted/20 p-2 text-left transition-colors hover:border-border hover:bg-muted/40"
-                              >
-                                <div
-                                  className={cn(
-                                    "flex h-7 w-7 items-center justify-center rounded-md",
-                                    comp.bgColor,
-                                  )}
-                                >
-                                  <Icon className={cn("h-3.5 w-3.5", comp.color)} />
-                                </div>
-                                <span className="text-xs">{comp.label}</span>
-                              </motion.button>
-                            )
-                          })}
-                      </div>
-                    </div>
-                  ))}
-                  {/* Hint */}
-                  <div className="rounded-lg border border-dashed border-border/40 p-3">
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
-                      <span className="font-semibold text-foreground/60">Tip:</span> Drag from a
-                      node's handle (the dot on its edge) to add a trigger, action, or timing node
-                      inline.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Automations tab */}
-            <TabsContent value="automations" className="flex flex-col gap-3">
-              <Card className="shrink-0 border-border/50 bg-card/50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Add Automation</CardTitle>
-                  <CardDescription className="text-xs">
-                    Connect nodes into an automation rule
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-medium text-muted-foreground">Source Node</p>
-                    <Select
-                      value={newAuto.sourceNodeId}
-                      onValueChange={(v) => setNewAuto((p) => ({ ...p, sourceNodeId: v }))}
-                    >
-                      <SelectTrigger className="h-8 w-full text-xs">
-                        <SelectValue placeholder="Select node…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {nodes.length === 0 ? (
-                          <SelectItem value="__none__" disabled>
-                            No nodes on canvas
-                          </SelectItem>
-                        ) : (
-                          nodes.map((n) => (
-                            <SelectItem key={n.id} value={n.id}>
-                              {String(n.data.label ?? n.id)}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-medium text-muted-foreground">Trigger</p>
-                    <Select
-                      value={newAuto.trigger}
-                      onValueChange={(v) => setNewAuto((p) => ({ ...p, trigger: v }))}
-                    >
-                      <SelectTrigger className="h-8 w-full text-xs">
-                        <SelectValue placeholder="Select trigger…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TRIGGER_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-medium text-muted-foreground">Action</p>
-                    <Select
-                      value={newAuto.action}
-                      onValueChange={(v) => setNewAuto((p) => ({ ...p, action: v }))}
-                    >
-                      <SelectTrigger className="h-8 w-full text-xs">
-                        <SelectValue placeholder="Select action…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ACTION_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-medium text-muted-foreground">Target Node</p>
-                    <Select
-                      value={newAuto.targetNodeId}
-                      onValueChange={(v) => setNewAuto((p) => ({ ...p, targetNodeId: v }))}
-                    >
-                      <SelectTrigger className="h-8 w-full text-xs">
-                        <SelectValue placeholder="Select output…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {outputNodes.length === 0 ? (
-                          <SelectItem value="__none__" disabled>
-                            No output nodes
-                          </SelectItem>
-                        ) : (
-                          outputNodes.map((n) => (
-                            <SelectItem key={n.id} value={n.id}>
-                              {String(n.data.label ?? n.id)}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button size="sm" className="w-full" onClick={addAutomation}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Automation
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <div className="space-y-2">
-                {automations.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border/50 py-8 text-center">
-                    <GitBranch className="mx-auto mb-2 h-6 w-6 text-muted-foreground/50" />
-                    <p className="text-xs text-muted-foreground">No automations yet</p>
-                  </div>
-                ) : (
-                  automations.map((auto) => {
-                    const srcNode = nodes.find((n) => n.id === auto.sourceNodeId)
-                    const tgtNode = nodes.find((n) => n.id === auto.targetNodeId)
-                    const triggerLabel =
-                      TRIGGER_OPTIONS.find((o) => o.value === auto.trigger)?.label ?? auto.trigger
-                    const actionLabel =
-                      ACTION_OPTIONS.find((o) => o.value === auto.action)?.label ?? auto.action
-                    return (
-                      <div
-                        key={auto.id}
-                        className="flex items-start justify-between gap-2 rounded-lg border border-border/50 bg-card/50 p-3"
-                      >
-                        <div className="min-w-0 flex-1 space-y-0.5">
-                          <p className="truncate text-xs font-medium">
-                            {srcNode ? String(srcNode.data.label) : "?"} →{" "}
-                            {tgtNode ? String(tgtNode.data.label) : "?"}
-                          </p>
-                          <p className="font-mono text-[10px] text-muted-foreground">
-                            {triggerLabel} → {actionLabel}
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 shrink-0 p-0"
-                          onClick={() => removeAutomation(auto.id)}
-                        >
-                          <X className="h-3.5 w-3.5 text-muted-foreground" />
-                        </Button>
-                      </div>
-                    )
-                  })
-                )}
-              </div>
-            </TabsContent>
+            <DeviceSettingsTab
+              deviceName={deviceName}
+              area={area}
+              wifiSsid={wifiSsid}
+              wifiPassword={wifiPassword}
+              onDeviceNameChange={setDeviceName}
+              onAreaChange={setArea}
+              onWifiSsidChange={setWifiSsid}
+              onWifiPasswordChange={setWifiPassword}
+            />
+            <ComponentsTab onAddComponent={handleAddNode} />
+            <AutomationsTab
+              nodes={nodes}
+              outputNodes={outputNodes}
+              automations={automations}
+              onAddAutomation={addAutomation}
+              onRemoveAutomation={removeAutomation}
+            />
           </Tabs>
 
-          {/* Node / edge properties panel */}
-          <AnimatePresence>
-            {(selectedNode || selectedEdge) && (
-              <motion.div
-                key="properties-panel"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                className="shrink-0"
-              >
-                <Card className="border-border/50 bg-card/50">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-xs capitalize">
-                        {selectedNode ? `${selectedNode.type} node` : "Connection"}
-                      </CardTitle>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0"
-                        onClick={() => {
-                          setSelectedNodeId(null)
-                          setSelectedEdgeId(null)
-                        }}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2 pb-3">
-                    {selectedNode && (
-                      <>
-                        <div className="space-y-1">
-                          <p className="text-[11px] font-medium text-muted-foreground">Label</p>
-                          <Input
-                            value={String(selectedNode.data.label ?? "")}
-                            onChange={(e) => handleUpdateNodeData("label", e.target.value)}
-                            className="h-7 text-xs"
-                          />
-                        </div>
-                        {selectedNode.data.pin !== undefined && (
-                          <div className="space-y-1">
-                            <p className="text-[11px] font-medium text-muted-foreground">
-                              GPIO Pin
-                            </p>
-                            <Input
-                              value={String(selectedNode.data.pin ?? "")}
-                              onChange={(e) => handleUpdateNodeData("pin", e.target.value)}
-                              className="h-7 font-mono text-xs"
-                              placeholder="GPIO4"
-                            />
-                          </div>
-                        )}
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 flex-1 text-xs"
-                            onClick={handleDuplicateNode}
-                          >
-                            <Copy className="mr-1.5 h-3 w-3" />
-                            Duplicate
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="h-7 flex-1 text-xs"
-                            onClick={handleDeleteNode}
-                          >
-                            <Trash2 className="mr-1.5 h-3 w-3" />
-                            Delete
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                    {selectedEdge && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="h-7 w-full text-xs"
-                        onClick={handleDeleteEdge}
-                      >
-                        <Trash2 className="mr-1.5 h-3 w-3" />
-                        Delete Connection
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <PropertiesPanel
+            selectedNode={selectedNode}
+            selectedEdge={selectedEdge}
+            onUpdateNodeData={handleUpdateNodeData}
+            onDuplicateNode={handleDuplicateNode}
+            onDeleteNode={handleDeleteNode}
+            onDeleteEdge={handleDeleteEdge}
+            onClose={() => { setSelectedNodeId(null); setSelectedEdgeId(null) }}
+          />
 
-          {/* Stats */}
           {!selectedNode && !selectedEdge && (
             <Card className="shrink-0 border-border/50 bg-card/50">
               <CardContent className="py-3">
@@ -1495,80 +488,26 @@ export function Workspace() {
         </div>
       </div>
 
-      {/* Portalled menus — escape all overflow/transform clipping */}
-      {createPortal(
-        <AnimatePresence>
-          <>
-            {/* Connect-drag or right-click canvas menu */}
-            {connectMenu && (
-              <NodePalette
-                ref={connectMenuRef}
-                x={connectMenu.screenX}
-                y={connectMenu.screenY}
-                title={connectMenu.menuType === "canvas" ? "Add to canvas" : "Add node"}
-                subtitle={
-                  connectMenu.menuType === "canvas" ? "Right-click • no connection" : undefined
-                }
-                search={connectMenuSearch}
-                onSearchChange={setConnectMenuSearch}
-                filtered={
-                  connectMenu.menuType === "canvas" ? filteredCanvasNodes : filteredConnectNodes
-                }
-                categories={
-                  connectMenu.menuType === "canvas" ? CANVAS_CATEGORIES : LOGIC_CATEGORIES
-                }
-                onSelect={handleAddContextualNode}
-                onClose={() => {
-                  setConnectMenu(null)
-                  setConnectMenuSearch("")
-                }}
-              />
-            )}
-
-            {/* Node-click menu */}
-            {nodeMenu && selectedNode && (
-              <NodePalette
-                ref={nodeMenuRef}
-                x={nodeMenu.screenX}
-                y={nodeMenu.screenY}
-                title="Add connected node"
-                subtitle={String(selectedNode.data.label ?? selectedNode.type)}
-                search={nodeMenuSearch}
-                onSearchChange={setNodeMenuSearch}
-                filtered={filteredNodeMenuNodes}
-                categories={LOGIC_CATEGORIES}
-                onSelect={handleAddContextualNodeFromNodeMenu}
-                onClose={() => {
-                  setNodeMenu(null)
-                  setNodeMenuSearch("")
-                }}
-                footer={
-                  <div className="border-t border-border/40 p-1.5">
-                    <button
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent"
-                      onClick={() => {
-                        handleDuplicateNode()
-                        setNodeMenu(null)
-                      }}
-                    >
-                      <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                      Duplicate node
-                    </button>
-                    <button
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-red-400 transition-colors hover:bg-destructive/10"
-                      onClick={handleDeleteNode}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Delete node
-                    </button>
-                  </div>
-                }
-              />
-            )}
-          </>
-        </AnimatePresence>,
-        document.body,
-      )}
+      <WorkspaceContextMenus
+        connectMenu={connectMenu}
+        connectMenuSearch={connectMenuSearch}
+        connectMenuRef={connectMenuRef}
+        filteredConnectNodes={filteredConnectNodes}
+        filteredCanvasNodes={filteredCanvasNodes}
+        onConnectMenuSearchChange={setConnectMenuSearch}
+        onAddContextualNode={handleAddContextualNode}
+        onConnectMenuClose={() => { setConnectMenu(null); setConnectMenuSearch("") }}
+        nodeMenu={nodeMenu}
+        selectedNode={selectedNode}
+        nodeMenuSearch={nodeMenuSearch}
+        nodeMenuRef={nodeMenuRef}
+        filteredNodeMenuNodes={filteredNodeMenuNodes}
+        onNodeMenuSearchChange={setNodeMenuSearch}
+        onAddContextualNodeFromNodeMenu={handleAddContextualNodeFromNodeMenu}
+        onNodeMenuClose={() => { setNodeMenu(null); setNodeMenuSearch("") }}
+        onDuplicateNode={handleDuplicateNode}
+        onDeleteNode={handleDeleteNode}
+      />
     </div>
   )
 }
