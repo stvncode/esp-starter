@@ -116,7 +116,7 @@ export function Sidebar() {
         <div className="px-2 py-4 overflow-hidden">
         {/* Home Link */}
         <NavLink
-          to="/"
+          to="/app"
           className={({ isActive }) =>
             cn(
               "mb-2 flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium transition-colors",
@@ -132,7 +132,7 @@ export function Sidebar() {
 
         {/* Workspace Link */}
         <NavLink
-          to="/workspace"
+          to="/app/workspace"
           end={false}
           className={({ isActive }) =>
             cn(

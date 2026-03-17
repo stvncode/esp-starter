@@ -317,7 +317,7 @@ export function Level5_2() {
 
                       {levelComplete && (
                         <Button asChild className="w-full">
-                          <Link to="/level/5.3">
+                          <Link to="/app/level/5.3">
                             Continue to Level 5.3
                             <ChevronRight className="ml-2 h-4 w-4" />
                           </Link>

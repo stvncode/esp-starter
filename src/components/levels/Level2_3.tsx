@@ -371,7 +371,7 @@ export function Level2_3() {
               You can read YAML configs carefully enough to spot subtle changes.
             </p>
             <Button asChild>
-              <Link to="/level/2.4">
+              <Link to="/app/level/2.4">
                 Continue to Level 2.4
                 <ChevronRight className="ml-2 h-4 w-4" />
               </Link>

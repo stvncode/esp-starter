@@ -387,7 +387,7 @@ export function Level5_1() {
                             You understand the flashing process. On to debugging!
                           </p>
                           <Button asChild>
-                            <Link to="/level/5.2">
+                            <Link to="/app/level/5.2">
                               Continue to Level 5.2
                               <ChevronRight className="ml-2 h-4 w-4" />
                             </Link>

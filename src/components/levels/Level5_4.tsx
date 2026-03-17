@@ -259,7 +259,7 @@ export function Level5_4() {
                 </p>
 
                 <Button asChild>
-                  <Link to="/level/6.1">
+                  <Link to="/app/level/6.1">
                     Continue to Phase 6
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Link>

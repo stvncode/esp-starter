@@ -475,7 +475,7 @@ export function Level1_4() {
                   animate={{ opacity: 1, y: 0 }}
                 >
                   <Button asChild className="w-full" size="sm">
-                    <Link to="/level/2.1">
+                    <Link to="/app/level/2.1">
                       Continue to Phase 2
                       <ChevronRight className="ml-2 h-4 w-4" />
                     </Link>

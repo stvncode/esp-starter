@@ -233,7 +233,7 @@ export function Level3_4() {
                   animate={{ opacity: 1, y: 0 }}
                 >
                   <Button asChild className="w-full">
-                    <Link to="/level/3.5">
+                    <Link to="/app/level/3.5">
                       Continue to Level 3.5
                       <ChevronRight className="ml-2 h-4 w-4" />
                     </Link>

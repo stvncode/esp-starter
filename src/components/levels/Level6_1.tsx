@@ -405,7 +405,7 @@ export function Level6_1() {
                             You can now embed C++ logic directly in your configs.
                           </p>
                           <Button asChild>
-                            <Link to="/level/6.2">
+                            <Link to="/app/level/6.2">
                               Continue to Level 6.2
                               <ChevronRight className="ml-2 h-4 w-4" />
                             </Link>

@@ -1,18 +1,18 @@
-import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Trophy, Flame, Sun, Moon, ChevronRight, Home } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
 import { useProgressStore } from "@/stores/progressStore"
+import { ChevronRight, Flame, Home, Moon, Sun, Trophy } from "lucide-react"
 import { useTheme } from "next-themes"
 import { Link, useLocation, useParams } from "react-router-dom"
 
-const PHASE_META: Record<number, { title: string; color: string }> = {
-  1: { title: "Visual Understanding", color: "text-amber-400" },
-  2: { title: "Revealing the Code", color: "text-blue-400" },
-  3: { title: "Guided Editing", color: "text-green-400" },
-  4: { title: "Building from Scratch", color: "text-purple-400" },
-  5: { title: "Real Hardware", color: "text-cyan-400" },
-  6: { title: "Advanced Topics", color: "text-pink-400" },
+const PHASE_META: Record<number, { color: string }> = {
+  1: { color: "text-amber-400" },
+  2: { color: "text-blue-400" },
+  3: { color: "text-green-400" },
+  4: { color: "text-purple-400" },
+  5: { color: "text-cyan-400" },
+  6: { color: "text-pink-400" },
 }
 
 const LEVEL_TITLES: Record<string, string> = {
@@ -35,12 +35,12 @@ function Breadcrumb() {
   const path = location.pathname
 
   type Crumb = { label: string; to?: string; color?: string }
-  const crumbs: Crumb[] = [{ label: "Home", to: "/" }]
+  const crumbs: Crumb[] = [{ label: "Home", to: "/app" }]
 
-  if (path === "/workspace") {
+  if (path === "/app/workspace") {
     crumbs.push({ label: "Workspace" })
-  } else if (path.startsWith("/workspace/builder")) {
-    crumbs.push({ label: "Workspace", to: "/workspace" })
+  } else if (path.startsWith("/app/workspace/builder")) {
+    crumbs.push({ label: "Workspace", to: "/app/workspace" })
     crumbs.push({ label: "Builder" })
   } else if (params.levelId) {
     const phaseNum = parseInt(params.levelId.split(".")[0])
@@ -85,21 +85,14 @@ function Breadcrumb() {
 export function Header() {
   const { completedLevels, streak, achievements } = useProgressStore()
   const { theme, setTheme } = useTheme()
-  const totalLevels = 25 // Total levels in the curriculum
+  const totalLevels = 25
   const progressPercent = (completedLevels.length / totalLevels) * 100
-
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark")
-  }
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border/50 bg-background/80 px-6 backdrop-blur-sm">
-      {/* Breadcrumb */}
       <div><Breadcrumb /></div>
 
-      {/* Stats & Actions */}
       <div className="flex items-center gap-4">
-        {/* Progress */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Your Progress</span>
@@ -109,29 +102,20 @@ export function Header() {
           </div>
           <Progress value={progressPercent} className="h-2 w-36" />
         </div>
-        {/* Streak */}
+
         <div className="flex items-center gap-2 rounded-lg bg-orange-500/10 px-3 py-1.5">
           <Flame className="h-4 w-4 text-orange-500" />
           <span className="text-sm font-semibold text-orange-500">{streak}</span>
           <span className="text-xs text-muted-foreground">day streak</span>
         </div>
 
-        {/* Achievements */}
         <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-1.5">
           <Trophy className="h-4 w-4 text-amber-500" />
-          <span className="text-sm font-semibold text-amber-500">
-            {achievements.length}
-          </span>
+          <span className="text-sm font-semibold text-amber-500">{achievements.length}</span>
           <span className="text-xs text-muted-foreground">achievements</span>
         </div>
 
-        {/* Theme Toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9"
-          onClick={toggleTheme}
-        >
+        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" />
           <span className="sr-only">Toggle theme</span>

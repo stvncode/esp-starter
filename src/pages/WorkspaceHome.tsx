@@ -47,7 +47,7 @@ export function WorkspaceHome() {
 
   function handleCreate() {
     const name = projectName.trim() || (template === "starter-kit" ? "starter-kit" : "my-device")
-    navigate("/workspace/builder", {
+    navigate("/app/workspace/builder", {
       state: {
         deviceName: name,
         board: template === "starter-kit" ? STARTER_KIT_BOARD : board,
@@ -59,7 +59,7 @@ export function WorkspaceHome() {
   }
 
   function handleOpenProject(project: SavedProject) {
-    navigate("/workspace/builder", {
+    navigate("/app/workspace/builder", {
       state: {
         deviceName: project.deviceName,
         board: project.board ?? "esp32dev",

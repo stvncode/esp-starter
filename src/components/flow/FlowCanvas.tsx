@@ -1,31 +1,31 @@
-import { useCallback, useMemo, useRef } from "react"
 import {
-  ReactFlow,
-  ReactFlowProvider,
   Background,
+  BackgroundVariant,
   Controls,
   MiniMap,
-  applyNodeChanges,
-  applyEdgeChanges,
+  ReactFlow,
+  ReactFlowProvider,
   addEdge,
+  applyEdgeChanges,
+  applyNodeChanges,
   useReactFlow,
   type Connection,
   type Edge,
+  type EdgeChange,
+  type EdgeMouseHandler,
   type Node,
   type NodeChange,
-  type EdgeChange,
-  BackgroundVariant,
-  type NodeTypes,
   type NodeMouseHandler,
-  type EdgeMouseHandler,
+  type NodeTypes,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { useTheme } from "next-themes"
-import { ButtonNode } from "./nodes/ButtonNode"
-import { LightNode } from "./nodes/LightNode"
+import { useCallback, useMemo, useRef } from "react"
 import { ActionNode } from "./nodes/ActionNode"
-import { TriggerNode } from "./nodes/TriggerNode"
+import { ButtonNode } from "./nodes/ButtonNode"
 import { DelayNode } from "./nodes/DelayNode"
+import { LightNode } from "./nodes/LightNode"
+import { TriggerNode } from "./nodes/TriggerNode"
 
 export interface ConnectionDroppedParams {
   screenX: number
@@ -90,21 +90,21 @@ function FlowCanvasInner({
       trigger: TriggerNode,
       delay: DelayNode,
     }),
-    []
+    [],
   )
 
   const handleNodesChangeInternal = useCallback(
     (changes: NodeChange[]) => {
       onNodesChange(applyNodeChanges(changes, nodes) as Node[])
     },
-    [nodes, onNodesChange]
+    [nodes, onNodesChange],
   )
 
   const handleEdgesChangeInternal = useCallback(
     (changes: EdgeChange[]) => {
       onEdgesChange(applyEdgeChanges(changes, edges) as Edge[])
     },
-    [edges, onEdgesChange]
+    [edges, onEdgesChange],
   )
 
   const handleConnect = useCallback(
@@ -114,7 +114,7 @@ function FlowCanvasInner({
       onEdgesChange(newEdges)
       onConnect?.(connection)
     },
-    [edges, onEdgesChange, onConnect]
+    [edges, onEdgesChange, onConnect],
   )
 
   const handleConnectStart = useCallback(
@@ -122,7 +122,7 @@ function FlowCanvasInner({
       connectingSourceRef.current = params.nodeId
       justConnectedRef.current = false
     },
-    []
+    [],
   )
 
   const handlePaneContextMenu = useCallback(
@@ -138,7 +138,7 @@ function FlowCanvasInner({
         flowY: flowPos.y,
       })
     },
-    [screenToFlowPosition, onPaneContextMenu]
+    [screenToFlowPosition, onPaneContextMenu],
   )
 
   const handleConnectEnd = useCallback(
@@ -153,8 +153,8 @@ function FlowCanvasInner({
       }
       justConnectedRef.current = false
 
-      const clientX = "clientX" in event ? event.clientX : event.touches?.[0]?.clientX ?? 0
-      const clientY = "clientY" in event ? event.clientY : event.touches?.[0]?.clientY ?? 0
+      const clientX = "clientX" in event ? event.clientX : (event.touches?.[0]?.clientX ?? 0)
+      const clientY = "clientY" in event ? event.clientY : (event.touches?.[0]?.clientY ?? 0)
       const flowPos = screenToFlowPosition({ x: clientX, y: clientY })
 
       onConnectionDropped({
@@ -165,7 +165,7 @@ function FlowCanvasInner({
         sourceNodeId: sourceId,
       })
     },
-    [screenToFlowPosition, onConnectionDropped]
+    [screenToFlowPosition, onConnectionDropped],
   )
 
   return (
@@ -211,11 +211,16 @@ function FlowCanvasInner({
             className="!border-border/50 !bg-card"
             nodeColor={(node) => {
               switch (node.type) {
-                case "button": return "#3b82f6"
-                case "light": return "#f59e0b"
-                case "action": return "#8b5cf6"
-                case "trigger": return "#06b6d4"
-                default: return "#6b7280"
+                case "button":
+                  return "#3b82f6"
+                case "light":
+                  return "#f59e0b"
+                case "action":
+                  return "#8b5cf6"
+                case "trigger":
+                  return "#06b6d4"
+                default:
+                  return "#6b7280"
               }
             }}
           />

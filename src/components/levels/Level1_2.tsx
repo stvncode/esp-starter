@@ -564,7 +564,7 @@ export function Level1_2() {
                   className="mt-4"
                 >
                   <Button asChild className="w-full" variant="outline">
-                    <Link to="/level/1.3">
+                    <Link to="/app/level/1.3">
                       Continue to Level 1.3
                       <ChevronRight className="ml-2 h-4 w-4" />
                     </Link>

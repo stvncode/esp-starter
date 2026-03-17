@@ -227,7 +227,7 @@ export function Level4_2() {
                     </div>
                   </div>
                   <Button asChild className="w-full">
-                    <Link to="/level/4.3">
+                    <Link to="/app/level/4.3">
                       Continue to Level 4.3
                       <ChevronRight className="ml-2 h-4 w-4" />
                     </Link>

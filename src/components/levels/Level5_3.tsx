@@ -364,7 +364,7 @@ export function Level5_3() {
                       You understand wireless firmware updates. One more level to go!
                     </p>
                     <Button asChild>
-                      <Link to="/level/5.4">
+                      <Link to="/app/level/5.4">
                         Continue to Level 5.4
                         <ChevronRight className="ml-2 h-4 w-4" />
                       </Link>
